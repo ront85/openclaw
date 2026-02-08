@@ -93,6 +93,10 @@ import {
   TickEventSchema,
 } from "./frames.js";
 import {
+  GuardianApprovalRequestParamsSchema,
+  GuardianApprovalResolveParamsSchema,
+} from "./guardian-approvals.js";
+import {
   ChatAbortParamsSchema,
   ChatEventSchema,
   ChatHistoryParamsSchema,
@@ -238,6 +242,8 @@ export const ProtocolSchemas: Record<string, TSchema> = {
   ExecApprovalsSnapshot: ExecApprovalsSnapshotSchema,
   ExecApprovalRequestParams: ExecApprovalRequestParamsSchema,
   ExecApprovalResolveParams: ExecApprovalResolveParamsSchema,
+  GuardianApprovalRequestParams: GuardianApprovalRequestParamsSchema,
+  GuardianApprovalResolveParams: GuardianApprovalResolveParamsSchema,
   DevicePairListParams: DevicePairListParamsSchema,
   DevicePairApproveParams: DevicePairApproveParamsSchema,
   DevicePairRejectParams: DevicePairRejectParamsSchema,

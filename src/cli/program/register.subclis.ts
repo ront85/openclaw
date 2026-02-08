@@ -89,6 +89,14 @@ const entries: SubCliEntry[] = [
     },
   },
   {
+    name: "guardian",
+    description: "Guardian tool-call approval system",
+    register: async (program) => {
+      const mod = await import("../guardian-cli.js");
+      mod.registerGuardianCli(program);
+    },
+  },
+  {
     name: "nodes",
     description: "Node commands",
     register: async (program) => {

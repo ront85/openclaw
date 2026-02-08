@@ -182,6 +182,8 @@ export type ExecToolDefaults = {
   messageProvider?: string;
   notifyOnExit?: boolean;
   cwd?: string;
+  /** When true, skip internal exec approval (guardian handles it at hook level) */
+  guardianEnabled?: boolean;
 };
 
 export type { BashSandboxConfig } from "./bash-tools.shared.js";
@@ -948,7 +950,8 @@ export function createExecTool(
       const configuredAsk = defaults?.ask ?? "on-miss";
       const requestedAsk = normalizeExecAsk(params.ask);
       let ask = maxAsk(configuredAsk, requestedAsk ?? configuredAsk);
-      const bypassApprovals = elevatedRequested && elevatedMode === "full";
+      const bypassApprovals =
+        (elevatedRequested && elevatedMode === "full") || defaults?.guardianEnabled === true;
       if (bypassApprovals) {
         ask = "off";
       }

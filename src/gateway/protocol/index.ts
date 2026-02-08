@@ -110,6 +110,10 @@ import {
   ExecApprovalRequestParamsSchema,
   type ExecApprovalResolveParams,
   ExecApprovalResolveParamsSchema,
+  type GuardianApprovalRequestParams,
+  GuardianApprovalRequestParamsSchema,
+  type GuardianApprovalResolveParams,
+  GuardianApprovalResolveParamsSchema,
   ErrorCodes,
   type ErrorShape,
   ErrorShapeSchema,
@@ -345,6 +349,12 @@ export const validateExecApprovalRequestParams = ajv.compile<ExecApprovalRequest
 );
 export const validateExecApprovalResolveParams = ajv.compile<ExecApprovalResolveParams>(
   ExecApprovalResolveParamsSchema,
+);
+export const validateGuardianApprovalRequestParams = ajv.compile<GuardianApprovalRequestParams>(
+  GuardianApprovalRequestParamsSchema,
+);
+export const validateGuardianApprovalResolveParams = ajv.compile<GuardianApprovalResolveParams>(
+  GuardianApprovalResolveParamsSchema,
 );
 export const validateExecApprovalsNodeGetParams = ajv.compile<ExecApprovalsNodeGetParams>(
   ExecApprovalsNodeGetParamsSchema,

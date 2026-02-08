@@ -89,6 +89,10 @@ import type {
   TickEventSchema,
 } from "./frames.js";
 import type {
+  GuardianApprovalRequestParamsSchema,
+  GuardianApprovalResolveParamsSchema,
+} from "./guardian-approvals.js";
+import type {
   ChatAbortParamsSchema,
   ChatEventSchema,
   ChatInjectParamsSchema,
@@ -227,6 +231,8 @@ export type ExecApprovalsNodeSetParams = Static<typeof ExecApprovalsNodeSetParam
 export type ExecApprovalsSnapshot = Static<typeof ExecApprovalsSnapshotSchema>;
 export type ExecApprovalRequestParams = Static<typeof ExecApprovalRequestParamsSchema>;
 export type ExecApprovalResolveParams = Static<typeof ExecApprovalResolveParamsSchema>;
+export type GuardianApprovalRequestParams = Static<typeof GuardianApprovalRequestParamsSchema>;
+export type GuardianApprovalResolveParams = Static<typeof GuardianApprovalResolveParamsSchema>;
 export type DevicePairListParams = Static<typeof DevicePairListParamsSchema>;
 export type DevicePairApproveParams = Static<typeof DevicePairApproveParamsSchema>;
 export type DevicePairRejectParams = Static<typeof DevicePairRejectParamsSchema>;

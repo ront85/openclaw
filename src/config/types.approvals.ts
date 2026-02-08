@@ -26,4 +26,5 @@ export type ExecApprovalForwardingConfig = {
 
 export type ApprovalsConfig = {
   exec?: ExecApprovalForwardingConfig;
+  guardian?: import("../infra/guardian/types.js").GuardianConfig;
 };
