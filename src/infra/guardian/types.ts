@@ -36,6 +36,19 @@ export type GuardianBudgetConfig = {
   onExceeded?: "deny" | "escalate";
 };
 
+export type ApiKeyDetectionConfig = {
+  enabled?: boolean;
+  envPath?: string; // Default: ~/.openclaw/.env
+  tier1?: "auto-filter" | "prompt"; // Default: auto-filter
+  tier2?: "auto-filter" | "prompt" | "allow"; // Default: auto-filter
+  tier3?: "auto-filter" | "prompt" | "allow"; // Default: allow
+  minKeyLength?: number; // Default: 18
+  entropyThreshold?: number; // Default: 4.5
+  bufferWindowMs?: number; // Default: 60000
+  notifyUser?: boolean; // Default: false
+  allowedPatterns?: string[]; // User exemptions
+};
+
 export type GuardianConfig = {
   enabled?: boolean;
   /** Minimum risk level that triggers approval. Default: "high" */
@@ -50,6 +63,8 @@ export type GuardianConfig = {
   constitutionPath?: string;
   /** Cost tracking and limits */
   budget?: GuardianBudgetConfig;
+  /** API key detection and filtering */
+  apiKeyDetection?: ApiKeyDetectionConfig;
   /** LLM configuration for Tier 2 */
   llm?: {
     provider?: string;

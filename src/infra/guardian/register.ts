@@ -5,6 +5,7 @@ import type { GuardianConfig } from "./types.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { createBudgetTracker } from "./budget.js";
 import { createGuardianHook } from "./hook.js";
+import { createMessageFilterHook } from "./hooks/message-filter.js";
 
 const log = createSubsystemLogger("guardian");
 
@@ -56,4 +57,37 @@ export function registerGuardianHook(params: GuardianRegistrationParams): void {
   });
 
   log.info("Guardian hook registered for before_tool_call");
+
+  // Register API key filtering hooks (if enabled)
+  if (params.config.apiKeyDetection?.enabled !== false) {
+    const messageFilter = createMessageFilterHook(params.config);
+
+    // Note: Using type assertion because the hook handler signature is generic
+    // Runtime behavior is correct; types don't perfectly align due to plugin hook variability
+    params.registry.typedHooks.push({
+      pluginId: "guardian",
+      hookName: "message_received",
+      handler: messageFilter as never,
+      priority: 1100, // higher priority than guardian tool hook
+      source: "built-in:guardian:api-key-filter",
+    });
+
+    params.registry.typedHooks.push({
+      pluginId: "guardian",
+      hookName: "message_sending",
+      handler: messageFilter as never,
+      priority: 1100,
+      source: "built-in:guardian:api-key-filter",
+    });
+
+    params.registry.typedHooks.push({
+      pluginId: "guardian",
+      hookName: "tool_result_persist",
+      handler: messageFilter as never,
+      priority: 1100,
+      source: "built-in:guardian:api-key-filter",
+    });
+
+    log.info("Guardian API key filter hooks registered");
+  }
 }

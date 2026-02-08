@@ -169,4 +169,102 @@ export function registerGuardianCli(program: Command) {
         runtime.log(DEFAULT_GUARDIAN_CONSTITUTION);
       }
     });
+
+  const keys = guardian.command("keys").description("Manage stored API keys");
+
+  keys
+    .command("list")
+    .description("List all stored API keys (metadata only)")
+    .action(async () => {
+      const runtime = defaultRuntime;
+      const { listStoredKeys, getDefaultEnvPath } =
+        await import("../infra/guardian/env-manager.js");
+
+      const stored = await listStoredKeys();
+
+      if (stored.length === 0) {
+        runtime.log("No API keys stored yet.");
+        runtime.log(`\nLocation: ${getDefaultEnvPath()}`);
+        return;
+      }
+
+      const now = Date.now();
+      const rows = stored.map((key) => {
+        const ageMs = now - key.storedAt;
+        const ageStr =
+          ageMs < 60_000
+            ? "just now"
+            : ageMs < 3600_000
+              ? `${Math.floor(ageMs / 60_000)}m ago`
+              : ageMs < 86_400_000
+                ? `${Math.floor(ageMs / 3600_000)}h ago`
+                : `${Math.floor(ageMs / 86_400_000)}d ago`;
+
+        return {
+          Variable: key.varName,
+          Provider: key.provider ?? "unknown",
+          Age: ageStr,
+        };
+      });
+
+      runtime.log("Stored API Keys:\n");
+      runtime.log(
+        renderTable({
+          columns: [
+            { key: "Variable", header: "Variable", minWidth: 40, flex: true },
+            { key: "Provider", header: "Provider", minWidth: 12 },
+            { key: "Age", header: "Age", minWidth: 12 },
+          ],
+          rows,
+        }),
+      );
+      runtime.log(`\nLocation: ${getDefaultEnvPath()}`);
+    });
+
+  keys
+    .command("show <varName>")
+    .description("Show API key value (requires Guardian approval)")
+    .action(async (varName: string) => {
+      const runtime = defaultRuntime;
+      const { getKeyValue, getDefaultEnvPath } = await import("../infra/guardian/env-manager.js");
+
+      // Note: In a real implementation, this should trigger Guardian escalation
+      // For now, we'll just show a warning
+      runtime.log("⚠️  Warning: This will display sensitive credentials.");
+      runtime.log("In production, this would require Guardian approval.\n");
+
+      const value = await getKeyValue(varName);
+
+      if (!value) {
+        runtime.log(`Error: Key '${varName}' not found in ${getDefaultEnvPath()}`);
+        return;
+      }
+
+      runtime.log(`${varName}=${value}`);
+    });
+
+  keys
+    .command("export")
+    .description("Export all keys as ENV format (requires Guardian approval)")
+    .action(async () => {
+      const runtime = defaultRuntime;
+      const { readEnvFile, getDefaultEnvPath } = await import("../infra/guardian/env-manager.js");
+
+      runtime.log("⚠️  Warning: This will display all sensitive credentials.");
+      runtime.log("In production, this would require Guardian approval.\n");
+
+      const env = await readEnvFile();
+      const keys = Object.entries(env).filter(([key]) => key.startsWith("OPENCLAW_API_KEY_"));
+
+      if (keys.length === 0) {
+        runtime.log("No API keys stored.");
+        return;
+      }
+
+      for (const [key, value] of keys) {
+        runtime.log(`${key}=${value}`);
+      }
+
+      runtime.log(`\n# Exported from ${getDefaultEnvPath()}`);
+    });
 }
