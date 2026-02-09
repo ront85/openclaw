@@ -27,6 +27,8 @@ const BASE_METHODS = [
   "exec.approval.resolve",
   "guardian.approval.request",
   "guardian.approval.resolve",
+  "secure-input.create",
+  "secure-input.submit",
   "wizard.start",
   "wizard.next",
   "wizard.cancel",

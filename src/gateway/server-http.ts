@@ -412,6 +412,26 @@ export function createGatewayHttpServer(opts: {
         }
       }
 
+      // Secure input page for API keys
+      const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+      if (url.pathname === "/secure-input") {
+        const { readFile } = await import("node:fs/promises");
+        const { join } = await import("node:path");
+        const publicPath = join(import.meta.dirname, "..", "..", "public", "secure-input.html");
+        try {
+          const html = await readFile(publicPath, "utf-8");
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.setHeader("X-Frame-Options", "DENY");
+          res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.end(html);
+          return;
+        } catch {
+          // Fall through to 404
+        }
+      }
+
       res.statusCode = 404;
       res.setHeader("Content-Type", "text/plain; charset=utf-8");
       res.end("Not Found");

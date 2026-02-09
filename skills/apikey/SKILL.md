@@ -16,42 +16,51 @@ disable-model-invocation: false
 
 # /apikey - Secure API Key Storage
 
-Securely store API keys with automatic provider detection, encryption, and transcript filtering.
+Securely store API keys with automatic provider detection and HTTPS-encrypted input.
 
 ## Overview
 
-The `/apikey` skill provides a safe, interactive way to store API keys without exposing them in chat transcripts or memory. When you use this skill:
+The `/apikey` skill provides a safe way to store API keys **without ever exposing them in chat history**. When you use this skill:
 
-1. **Automatic Detection**: Recognizes 15+ providers (OpenAI, Anthropic, GitHub, etc.)
-2. **Secure Storage**: Saves keys in `~/.openclaw/.env` with generated variable names
-3. **Transcript Filtering**: Removes the key from conversation history
-4. **Deduplication**: Prevents storing the same key multiple times
+1. **Secure HTTPS Input**: Opens a private web page where you can paste your key
+2. **Automatic Detection**: Recognizes 15+ providers (OpenAI, Anthropic, GitHub, etc.)
+3. **Secure Storage**: Saves keys in `~/.openclaw/.env` with generated variable names
+4. **Never Touches Chat**: Keys never appear in Discord/Telegram/Slack history
+5. **Deduplication**: Prevents storing the same key multiple times
 
 ## Usage
-
-### Store a Key with Provider Detection
 
 ```
 /apikey
 ```
 
-Then paste your API key in the next message. The system will:
+**CRITICAL**: When you run `/apikey`, you will receive a secure HTTPS link. **Click the link** to enter your API key in a protected web form. **Never paste API keys directly in chat.**
 
-- Detect the provider automatically (e.g., OpenAI, Anthropic, GitHub)
-- Generate a variable name: `OPENCLAW_API_KEY_{PROVIDER}_{TIMESTAMP}`
-- Store it securely in `~/.openclaw/.env`
-- Filter the key from the conversation
-- Confirm the variable name
-
-### Store a Key for Specific Provider
+The bot will respond with:
 
 ```
-/apikey openai
-/apikey anthropic
-/apikey github
+🔐 Click here to securely enter your API key:
+   https://openclaw.ai/secure-input?token=abc123
+
+   ⏰ This link expires in 5 minutes
+   🔒 HTTPS encrypted, key never touches chat history
 ```
 
-Specify the provider name to override automatic detection.
+### What You Can Input
+
+On the secure input page, you can:
+
+- **Paste plain text API keys** (one or multiple, one per line)
+- **Upload .txt or .env files** containing keys
+- **Upload screenshot images** of keys (OCR support coming soon)
+- **Paste entire config files** - all keys will be auto-detected
+
+The system will:
+
+- Detect all API keys automatically
+- Store each with a unique variable name: `OPENCLAW_API_KEY_{PROVIDER}_{TIMESTAMP}`
+- Confirm what was stored
+- Never log the raw key anywhere
 
 ## Supported Providers
 
