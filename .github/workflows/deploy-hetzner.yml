@@ -34,11 +34,11 @@ jobs:
         uses: shimataro/ssh-key-action@v2
         with:
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          known_hosts: unnecessary
+          known_hosts: |
+            5.161.46.0 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCLp6efgUQLWFWFnY2e3pBbKWVtJcl+mj3teg+D3wsb2Rbqtf6bBEecB7HEElY6lWgt2RGPLpr6wXEtJXzFWSjUXs9MYq9mM0BmPHXAX10+H5p8OGsXWUXVlw6I02Lz6muYHXD5STCnqkeaURQT2Xo/puaEuD9vE16lG/1IZPy2L3jO8uOPSM0ZjpaSNabCm/NF6MxYZ87TUTnSw2LMjwOUSSNvG1YzyTGeCWzZlVpUX9VrPg4IS7RpdPx7z5kw2VcnED2iZkIBGlrL6B7GVDq4VfPVCIO+5AlbU/lqqRzOvvQv/6TbD0EGG8wZO41klVLcNGd7BvJBsbVeWXGnNmOoF+OQ3Ei2YxKodZuvzPdhJo30Ed6EMiwL7y9jdNK/1+X3GRhj8FPom3wTwnQNm8LB79QZbRFDE9bw1mdT21HY/4pzOzkEyxAm60y/Rlxpwxf/lxqDBbvyzFM6I95AvC0VF64Tx7J+nHq3r3fRhuwdGvaAS/CWqSheslu1jUPTjb0=
+            5.161.46.0 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHo3Iwjitv6zHHg0qVUJBQiekXqClTPDL5i3Mxvnncsq7kOd1Z6jw3gjexUPpir4cUuknNeOVJonYfMoL4jB0+0=
+            5.161.46.0 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDzRBNdhJxct4fMyHDXe4P7v4wmlxjPzQxyRunKcw7jC
           if_key_exists: replace
-
-      - name: Add known hosts
-        run: ssh-keyscan -H 5.161.46.0 >> ~/.ssh/known_hosts
 
       - name: Transfer Docker image to server
         run: |
