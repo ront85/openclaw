@@ -122,6 +122,11 @@ export function installSessionToolResultGuard(
       meta: { toolCallId?: string; toolName?: string; isSynthetic?: boolean },
     ) => AgentMessage;
     /**
+     * Optional, synchronous transform applied to user messages *before* they are
+     * persisted to the session transcript (e.g., for API key filtering).
+     */
+    transformUserMessageForPersistence?: (message: AgentMessage) => AgentMessage;
+    /**
      * Whether to synthesize missing tool results to satisfy strict providers.
      * Defaults to true.
      */
@@ -140,6 +145,11 @@ export function installSessionToolResultGuard(
   ) => {
     const transformer = opts?.transformToolResultForPersistence;
     return transformer ? transformer(message, meta) : message;
+  };
+
+  const persistUserMessage = (message: AgentMessage) => {
+    const transformer = opts?.transformUserMessageForPersistence;
+    return transformer ? transformer(message) : message;
   };
 
   const allowSyntheticToolResults = opts?.allowSyntheticToolResults ?? true;
@@ -166,6 +176,12 @@ export function installSessionToolResultGuard(
   const guardedAppend = (message: AgentMessage) => {
     let nextMessage = message;
     const role = (message as { role?: unknown }).role;
+
+    // Filter user messages before persistence (e.g., API key filtering)
+    if (role === "user") {
+      nextMessage = persistUserMessage(nextMessage);
+    }
+
     if (role === "assistant") {
       const sanitized = sanitizeToolCallInputs([message]);
       if (sanitized.length === 0) {

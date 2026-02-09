@@ -45,8 +45,31 @@ export function guardSessionManager(
       }
     : undefined;
 
+  // User message filtering (uses same hook infrastructure for consistency)
+  const transformUser = hookRunner?.hasHooks("tool_result_persist")
+    ? // oxlint-disable-next-line typescript/no-explicit-any
+      (message: any) => {
+        const out = hookRunner.runToolResultPersist(
+          {
+            toolName: undefined,
+            toolCallId: undefined,
+            message,
+            isSynthetic: false,
+          },
+          {
+            agentId: opts?.agentId,
+            sessionKey: opts?.sessionKey,
+            toolName: undefined,
+            toolCallId: undefined,
+          },
+        );
+        return out?.message ?? message;
+      }
+    : undefined;
+
   const guard = installSessionToolResultGuard(sessionManager, {
     transformToolResultForPersistence: transform,
+    transformUserMessageForPersistence: transformUser,
     allowSyntheticToolResults: opts?.allowSyntheticToolResults,
   });
   (sessionManager as GuardedSessionManager).flushPendingToolResults = guard.flushPendingToolResults;

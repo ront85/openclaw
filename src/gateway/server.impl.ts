@@ -237,6 +237,16 @@ export async function startGatewayServer(
     coreGatewayHandlers,
     baseMethods,
   });
+
+  // Register Guardian hooks if enabled
+  if (cfgAtStart.approvals?.guardian?.enabled) {
+    const { registerGuardianHook } = await import("../infra/guardian/register.js");
+    registerGuardianHook({
+      registry: pluginRegistry,
+      config: cfgAtStart.approvals.guardian,
+    });
+  }
+
   const channelLogs = Object.fromEntries(
     listChannelPlugins().map((plugin) => [plugin.id, logChannels.child(plugin.id)]),
   ) as Record<ChannelId, ReturnType<typeof createSubsystemLogger>>;

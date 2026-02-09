@@ -40,11 +40,11 @@ export function createMessageFilterHook(config: GuardianConfig) {
     } else if (hookType === "tool_result_persist") {
       const payload = context.payload as {
         message?: unknown;
-        meta?: { sessionKey?: string; agentId?: string };
       };
+      const ctx = context.context as { sessionKey?: string; agentId?: string } | undefined;
       textContent = extractTextFromObject(payload.message);
-      sessionKey = payload.meta?.sessionKey ?? "";
-      agentId = payload.meta?.agentId ?? "";
+      sessionKey = ctx?.sessionKey ?? "";
+      agentId = ctx?.agentId ?? "";
     }
 
     if (!textContent) {
@@ -114,9 +114,14 @@ export function createMessageFilterHook(config: GuardianConfig) {
         return context;
       }
 
-      // Replace in message content
+      // Replace in message content (handles user messages, assistant messages)
       if ("content" in message && typeof message.content === "string") {
         message.content = replaceApiKeys(message.content, keysToFilter, varNameMap);
+      }
+
+      // Replace in message text field (alternative content field)
+      if ("text" in message && typeof message.text === "string") {
+        message.text = replaceApiKeys(message.text, keysToFilter, varNameMap);
       }
 
       // Replace in tool use (input parameters)
