@@ -326,7 +326,7 @@ function detectInBase64(
  * Inner helper that detects keys without base64 recursion
  */
 function detectInBase64Inner(text: string, config: ApiKeyDetectionConfig): DetectedKey[] {
-  const minKeyLength = config.minKeyLength ?? 18;
+  const _minKeyLength = config.minKeyLength ?? 18;
   const detected: DetectedKey[] = [];
 
   // Only scan tier1 patterns in base64 (high confidence only)

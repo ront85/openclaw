@@ -14,7 +14,7 @@ export function replaceApiKeys(
   }
 
   // Sort by start position (descending) to avoid index shifting
-  const sorted = [...detectedKeys].sort((a, b) => b.start - a.start);
+  const sorted = [...detectedKeys].toSorted((a, b) => b.start - a.start);
 
   let result = text;
   for (const key of sorted) {

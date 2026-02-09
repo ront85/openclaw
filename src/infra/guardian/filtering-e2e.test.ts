@@ -136,7 +136,7 @@ GOOGLE_API_KEY=AIza${"E".repeat(35)}
 
       const firstHalf = "sk-abc";
       const secondHalf = "def123ghi456jkl789mno012pqr345stu678vwx901yz";
-      const fullKey = firstHalf + secondHalf;
+      const _fullKey = firstHalf + secondHalf;
 
       // Add messages to buffer
       const now = Date.now();
@@ -144,7 +144,7 @@ GOOGLE_API_KEY=AIza${"E".repeat(35)}
       buffer.addMessage(sessionKey, `Second part: ${secondHalf}`, now + 1000);
 
       // Detect split keys
-      const detected = buffer.detectSplitKeys(sessionKey, config);
+      const _detected = buffer.detectSplitKeys(sessionKey, config);
 
       // May or may not detect depending on pattern matching
       // But the concatenation should work
