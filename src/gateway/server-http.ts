@@ -396,7 +396,7 @@ export function createGatewayHttpServer(opts: {
       const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
       if (url.pathname === "/secure-input") {
         const { readFile } = await import("node:fs/promises");
-        const { join, resolve } = await import("node:path");
+        const { join } = await import("node:path");
         const { cwd } = await import("node:process");
 
         // Resolve path: assume project root is cwd() in dev, or parent of dist/ in prod
@@ -414,6 +414,98 @@ export function createGatewayHttpServer(opts: {
           return;
         } catch {
           // Fall through to 404
+        }
+      }
+
+      // Secure input API endpoint for form submission
+      if (url.pathname === "/api/secure-input/submit") {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.setHeader("Allow", "POST");
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ success: false, error: "Method Not Allowed" }));
+          return;
+        }
+
+        try {
+          const body = await readJsonBody(req, 1024 * 1024); // 1MB max
+          if (!body.ok) {
+            sendJson(res, 400, { success: false, error: body.error });
+            return;
+          }
+
+          const { token, value } = body.value as { token?: string; value?: string };
+          if (!token || !value) {
+            sendJson(res, 400, { success: false, error: "token and value are required" });
+            return;
+          }
+
+          // Import secure input handlers
+          const { validateSecureInputToken } = await import("./secure-input-tokens.js");
+          const { detectApiKeys } = await import("../infra/guardian/api-key-detector.js");
+          const { storeApiKey } = await import("../infra/guardian/env-manager.js");
+
+          // Validate token
+          const tokenData = validateSecureInputToken(token);
+          if (!tokenData) {
+            sendJson(res, 400, {
+              success: false,
+              error: "Invalid, expired, or already used token",
+            });
+            return;
+          }
+
+          // Detect API keys in the submitted value
+          const detected = detectApiKeys(value, {
+            enabled: true,
+            tier1: "auto-filter",
+            tier2: "auto-filter",
+            tier3: "allow",
+            minKeyLength: 18,
+            entropyThreshold: 4.5,
+          });
+
+          if (detected.length === 0) {
+            sendJson(res, 400, {
+              success: false,
+              error: "No API keys detected in the provided input",
+            });
+            return;
+          }
+
+          // Store all detected keys
+          const stored: Array<{ provider: string | null; varName: string }> = [];
+
+          for (const key of detected) {
+            const { varName } = await storeApiKey(
+              key.value,
+              key.provider,
+              undefined, // Use default env path
+              {
+                agentId: tokenData.agentId,
+                sessionKey: tokenData.channelId ?? "secure-input",
+                hookType: "secure-input",
+              },
+            );
+
+            stored.push({
+              provider: key.provider,
+              varName,
+            });
+          }
+
+          sendJson(res, 200, {
+            success: true,
+            data: {
+              stored,
+              count: stored.length,
+            },
+          });
+          return;
+        } catch (error) {
+          log.error("secure-input submit error", error);
+          sendJson(res, 500, { success: false, error: "Internal Server Error" });
+          return;
         }
       }
 

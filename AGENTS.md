@@ -48,6 +48,22 @@
   `pkill -9 -f openclaw-gateway || true; nohup openclaw gateway run --bind loopback --port 18789 --force > /tmp/openclaw-gateway.log 2>&1 &`
 - Verify: `openclaw channels status --probe`, `ss -ltnp | rg 18789`, `tail -n 120 /tmp/openclaw-gateway.log`.
 
+## Hetzner Production Deployment
+
+- SSH: `ssh hetzner-openclaw` (configured in `~/.ssh/config` pointing to `5.161.46.0`)
+- Deploy: Use `/hetzner-deploy` skill or run manually:
+  ```bash
+  ssh hetzner-openclaw "cd /opt/openclaw && git stash && git pull && git stash pop"
+  # Resolve any docker-compose.yml conflicts (keep Traefik labels + dokploy-network)
+  ssh hetzner-openclaw "cd /opt/openclaw && docker compose down && docker compose up -d"
+  ```
+- Verify: `ssh hetzner-openclaw "cd /opt/openclaw && docker compose logs openclaw-gateway --tail 50"`
+- Check for: `[gateway] listening on ws://0.0.0.0:18789`, `[discord] logged in to discord`
+- **Memory limit**: Server has only 2GB RAM; `docker build` will fail (exit 137). Deploy restarts containers with existing `openclaw:latest` image. For image updates, build locally or wait for CI/CD.
+- Config: Production docker-compose.yml includes Traefik reverse proxy labels, dokploy-network, DISCORD_BOT_TOKEN, OPENROUTER_API_KEY, and `--allow-unconfigured` flag
+- Environment: Variables in `/opt/openclaw-data/.env` (not tracked in git)
+- Rollback: `ssh hetzner-openclaw "cd /opt/openclaw && git reset --hard <commit-hash> && docker compose restart"`
+
 ## Build, Test, and Development Commands
 
 - Runtime baseline: Node **22+** (keep Node + Bun paths working).
