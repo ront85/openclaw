@@ -18,42 +18,47 @@ disable-model-invocation: false
 
 Securely store API keys with automatic provider detection and HTTPS-encrypted input.
 
-## LLM Instructions
+## CRITICAL LLM EXECUTION INSTRUCTIONS
 
-When the user invokes `/apikey`, you MUST:
+When `/apikey` is invoked, you MUST execute this EXACT sequence:
 
-1. Call the gateway RPC method `secure-input.create` with parameters:
+**Step 1:** Call the `gateway` tool with these parameters:
 
-   ```json
-   {
-     "agentId": "<current-agent-id>",
-     "channelId": "<current-channel-id>"
-   }
-   ```
+```
+gateway(action="secure-input.create", agentId="<your-agent-id>", channelId="<session-channel-id>")
+```
 
-2. The method returns:
+**Step 2:** The tool will return:
 
-   ```json
-   {
-     "token": "<one-time-token>",
-     "url": "https://..../secure-input?token=<token>",
-     "expiresAt": <timestamp>
-   }
-   ```
+```json
+{
+  "ok": true,
+  "result": {
+    "token": "abc123...",
+    "url": "http://localhost:18789/secure-input?token=abc123...",
+    "expiresAt": 1234567890
+  }
+}
+```
 
-3. Send the user a message with the actual URL (not a placeholder):
+**Step 3:** Extract the URL and send ONLY this message (using the REAL URL from step 2):
 
-   ```
-   🔐 Click here to securely enter your API key:
-   <ACTUAL URL FROM RESPONSE>
+```
+🔐 Click here to securely enter your API key:
+<result.url>
 
-   ⏰ This link expires in <X> minutes
-   🔒 HTTPS encrypted, key never touches chat history
+⏰ This link expires in 5 minutes
+🔒 HTTPS encrypted, key never touches chat history
 
-   Never paste API keys directly in chat. Use the link above for safe storage.
-   ```
+Never paste API keys directly in chat. Use the link above for safe storage.
+```
 
-**CRITICAL**: DO NOT send a placeholder URL like `<secure-session-token>`. You MUST call the RPC method and use the REAL URL returned.
+**DO NOT:**
+
+- ❌ Send placeholder URLs like `<secure-session-token>`
+- ❌ Generate example API keys or configs
+- ❌ Store anything before calling the tool
+- ❌ Skip calling the gateway tool
 
 ## Overview
 
