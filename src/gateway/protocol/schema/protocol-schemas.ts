@@ -120,6 +120,12 @@ import {
   NodeRenameParamsSchema,
 } from "./nodes.js";
 import {
+  SecureInputCreateParamsSchema,
+  SecureInputCreateResultSchema,
+  SecureInputSubmitParamsSchema,
+  SecureInputSubmitResultSchema,
+} from "./secure-input.js";
+import {
   SessionsCompactParamsSchema,
   SessionsDeleteParamsSchema,
   SessionsListParamsSchema,
@@ -244,6 +250,10 @@ export const ProtocolSchemas: Record<string, TSchema> = {
   ExecApprovalResolveParams: ExecApprovalResolveParamsSchema,
   GuardianApprovalRequestParams: GuardianApprovalRequestParamsSchema,
   GuardianApprovalResolveParams: GuardianApprovalResolveParamsSchema,
+  SecureInputCreateParams: SecureInputCreateParamsSchema,
+  SecureInputCreateResult: SecureInputCreateResultSchema,
+  SecureInputSubmitParams: SecureInputSubmitParamsSchema,
+  SecureInputSubmitResult: SecureInputSubmitResultSchema,
   DevicePairListParams: DevicePairListParamsSchema,
   DevicePairApproveParams: DevicePairApproveParamsSchema,
   DevicePairRejectParams: DevicePairRejectParamsSchema,

@@ -262,6 +262,8 @@ export function handleControlUiHttpRequest(
       respondNotFound(res);
       return true;
     }
+    // No basePath and not /ui -> not a control UI request
+    return false;
   }
 
   if (basePath) {

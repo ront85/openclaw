@@ -392,6 +392,31 @@ export function createGatewayHttpServer(opts: {
           return;
         }
       }
+      // Secure input page for API keys (check before control UI)
+      const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
+      if (url.pathname === "/secure-input") {
+        const { readFile } = await import("node:fs/promises");
+        const { join, resolve } = await import("node:path");
+        const { cwd } = await import("node:process");
+
+        // Resolve path: assume project root is cwd() in dev, or parent of dist/ in prod
+        // In Docker, it's always /app
+        const publicPath = join(cwd(), "public", "secure-input.html");
+
+        try {
+          const html = await readFile(publicPath, "utf-8");
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "text/html; charset=utf-8");
+          res.setHeader("X-Frame-Options", "DENY");
+          res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
+          res.setHeader("X-Content-Type-Options", "nosniff");
+          res.end(html);
+          return;
+        } catch {
+          // Fall through to 404
+        }
+      }
+
       if (controlUiEnabled) {
         if (
           handleControlUiAvatarRequest(req, res, {
@@ -409,26 +434,6 @@ export function createGatewayHttpServer(opts: {
           })
         ) {
           return;
-        }
-      }
-
-      // Secure input page for API keys
-      const url = new URL(req.url ?? "/", `http://${req.headers.host ?? "localhost"}`);
-      if (url.pathname === "/secure-input") {
-        const { readFile } = await import("node:fs/promises");
-        const { join } = await import("node:path");
-        const publicPath = join(import.meta.dirname, "..", "..", "public", "secure-input.html");
-        try {
-          const html = await readFile(publicPath, "utf-8");
-          res.statusCode = 200;
-          res.setHeader("Content-Type", "text/html; charset=utf-8");
-          res.setHeader("X-Frame-Options", "DENY");
-          res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
-          res.setHeader("X-Content-Type-Options", "nosniff");
-          res.end(html);
-          return;
-        } catch {
-          // Fall through to 404
         }
       }
 
