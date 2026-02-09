@@ -18,6 +18,43 @@ disable-model-invocation: false
 
 Securely store API keys with automatic provider detection and HTTPS-encrypted input.
 
+## LLM Instructions
+
+When the user invokes `/apikey`, you MUST:
+
+1. Call the gateway RPC method `secure-input.create` with parameters:
+
+   ```json
+   {
+     "agentId": "<current-agent-id>",
+     "channelId": "<current-channel-id>"
+   }
+   ```
+
+2. The method returns:
+
+   ```json
+   {
+     "token": "<one-time-token>",
+     "url": "https://..../secure-input?token=<token>",
+     "expiresAt": <timestamp>
+   }
+   ```
+
+3. Send the user a message with the actual URL (not a placeholder):
+
+   ```
+   🔐 Click here to securely enter your API key:
+   <ACTUAL URL FROM RESPONSE>
+
+   ⏰ This link expires in <X> minutes
+   🔒 HTTPS encrypted, key never touches chat history
+
+   Never paste API keys directly in chat. Use the link above for safe storage.
+   ```
+
+**CRITICAL**: DO NOT send a placeholder URL like `<secure-session-token>`. You MUST call the RPC method and use the REAL URL returned.
+
 ## Overview
 
 The `/apikey` skill provides a safe way to store API keys **without ever exposing them in chat history**. When you use this skill:
