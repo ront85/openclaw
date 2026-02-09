@@ -33,7 +33,7 @@ jobs:
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${{ secrets.HETZNER_SSH_KEY_BASE64 }}" | base64 -d > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H 5.161.46.0 >> ~/.ssh/known_hosts
 
