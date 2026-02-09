@@ -34,6 +34,7 @@ const GATEWAY_ACTIONS = [
   "config.apply",
   "config.patch",
   "update.run",
+  "secure-input.create",
 ] as const;
 
 // NOTE: Using a flattened object schema instead of Type.Union([Type.Object(...), ...])
@@ -55,6 +56,9 @@ const GatewayToolSchema = Type.Object({
   sessionKey: Type.Optional(Type.String()),
   note: Type.Optional(Type.String()),
   restartDelayMs: Type.Optional(Type.Number()),
+  // secure-input.create
+  agentId: Type.Optional(Type.String()),
+  channelId: Type.Optional(Type.String()),
 });
 // NOTE: We intentionally avoid top-level `allOf`/`anyOf`/`oneOf` conditionals here:
 // - OpenAI rejects tool schemas that include these keywords at the *top-level*.
@@ -69,7 +73,7 @@ export function createGatewayTool(opts?: {
     label: "Gateway",
     name: "gateway",
     description:
-      "Restart, apply config, or update the gateway in-place (SIGUSR1). Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing.",
+      "Restart, apply config, update the gateway in-place (SIGUSR1), or create secure input tokens for API keys. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing. Use secure-input.create to generate time-limited HTTPS links for secure API key entry.",
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -244,6 +248,13 @@ export function createGatewayTool(opts?: {
           note,
           restartDelayMs,
           timeoutMs: timeoutMs ?? DEFAULT_UPDATE_TIMEOUT_MS,
+        });
+        return jsonResult({ ok: true, result });
+      }
+      if (action === "secure-input.create") {
+        const result = await callGatewayTool("secure-input.create", gatewayOpts, {
+          agentId: opts?.config?.agents?.defaults?.model?.primary,
+          channelId: opts?.agentSessionKey,
         });
         return jsonResult({ ok: true, result });
       }
