@@ -35,7 +35,7 @@ gateway(action="secure-input.create", agentId="<your-agent-id>", channelId="<ses
   "ok": true,
   "result": {
     "token": "abc123...",
-    "url": "http://localhost:18789/secure-input?token=abc123...",
+    "url": "https://gateway.emorise.com/secure-input?token=abc123...",
     "expiresAt": 1234567890
   }
 }
@@ -82,7 +82,7 @@ The bot will respond with:
 
 ```
 🔐 Click here to securely enter your API key:
-   https://openclaw.ai/secure-input?token=abc123
+   https://gateway.emorise.com/secure-input?token=abc123
 
    ⏰ This link expires in 5 minutes
    🔒 HTTPS encrypted, key never touches chat history
