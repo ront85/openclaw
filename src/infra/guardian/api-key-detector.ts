@@ -9,6 +9,10 @@ export type DetectedKey = {
   confidence: "tier1" | "tier2" | "tier3";
   pattern: string;
   context: string;
+  metadata?: {
+    configObject?: Record<string, unknown>;
+    serviceName?: string;
+  };
 };
 
 export type ApiKeyDetectionConfig = {
@@ -152,10 +156,11 @@ const TIER2_PATTERNS: PatternSpec[] = [
       return (value?.length ?? 0) >= 18;
     },
   },
-  // JSON fields: "apiKey": "xxx"
+  // JSON fields: "apiKey": "xxx", "api_key": "xxx", etc.
+  // More flexible pattern to catch various naming conventions
   {
     pattern:
-      /"(?:api[_-]?key|token|secret|password|auth|bearer)"\s*:\s*"([A-Za-z0-9_+/=.-]{18,})"/gi,
+      /"(?:api[_-]?key|apikey|token|secret|password|auth|bearer|credentials?|access[_-]?key)"\s*:\s*"([A-Za-z0-9_+/=.~-]{18,})"/gi,
     provider: null,
     confidence: "tier2",
     minLength: 18,
