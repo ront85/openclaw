@@ -230,6 +230,28 @@
 
       <form id="keyForm">
         <div class="form-group">
+          <label for="serviceName">Service Name (optional):</label>
+          <input
+            type="text"
+            id="serviceName"
+            name="serviceName"
+            placeholder="e.g., Odoo, Google Ads, Salesforce, etc."
+            autocomplete="off"
+            style="
+              width: 100%;
+              padding: 12px;
+              border: 2px solid #e0e0e0;
+              border-radius: 8px;
+              font-size: 14px;
+            "
+          />
+          <small style="color: #666; font-size: 12px; display: block; margin-top: 4px">
+            Helps identify what this key is for. Will be saved as
+            OPENCLAW_API_KEY_SERVICENAME_timestamp
+          </small>
+        </div>
+
+        <div class="form-group">
           <label for="keyInput">Paste your API key(s) here:</label>
           <textarea
             id="keyInput"
@@ -350,6 +372,8 @@ or paste entire config file"
         e.preventDefault();
 
         const value = keyInput.value.trim();
+        const serviceName = document.getElementById("serviceName").value.trim();
+
         if (!value) {
           showError("Please enter an API key or upload a file");
           return;
@@ -369,6 +393,7 @@ or paste entire config file"
             body: JSON.stringify({
               token,
               value,
+              serviceName: serviceName || undefined,
             }),
           });
 

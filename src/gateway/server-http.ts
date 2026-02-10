@@ -434,7 +434,11 @@ export function createGatewayHttpServer(opts: {
             return;
           }
 
-          const { token, value } = body.value as { token?: string; value?: string };
+          const { token, value, serviceName } = body.value as {
+            token?: string;
+            value?: string;
+            serviceName?: string;
+          };
           if (!token || !value) {
             sendJson(res, 400, { success: false, error: "token and value are required" });
             return;
@@ -479,7 +483,7 @@ export function createGatewayHttpServer(opts: {
           for (const key of detected) {
             const { varName } = await storeApiKey(
               key.value,
-              key.provider,
+              serviceName || key.provider, // Use serviceName if provided, fallback to detected provider
               undefined, // Use default env path
               {
                 agentId: tokenData.agentId,
@@ -489,7 +493,7 @@ export function createGatewayHttpServer(opts: {
             );
 
             stored.push({
-              provider: key.provider,
+              provider: serviceName || key.provider,
               varName,
             });
           }
