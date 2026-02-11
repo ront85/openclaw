@@ -86,3 +86,4 @@ local/
 
 # Runbooks with secrets (NEVER COMMIT)
 docs/emorise/new-client-runbook.md
+HETZNER.md

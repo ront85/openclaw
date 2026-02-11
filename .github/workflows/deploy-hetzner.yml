@@ -42,11 +42,11 @@ jobs:
 
       - name: Transfer Docker image to server
         run: |
-          scp -o StrictHostKeyChecking=no openclaw-latest.tar.gz root@5.161.46.0:/tmp/
+          scp -o StrictHostKeyChecking=no openclaw-latest.tar.gz deployer@5.161.46.0:/tmp/
 
       - name: Deploy on server
         run: |
-          ssh -o StrictHostKeyChecking=no root@5.161.46.0 << 'ENDSSH'
+          ssh -o StrictHostKeyChecking=no deployer@5.161.46.0 << 'ENDSSH'
             # Load new image
             docker load < /tmp/openclaw-latest.tar.gz
 
