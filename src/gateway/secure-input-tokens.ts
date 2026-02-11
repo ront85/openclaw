@@ -49,6 +49,10 @@ export function createSecureInputToken(params: {
   const baseUrl = process.env.OPENCLAW_SECURE_INPUT_URL ?? "http://localhost:18789";
   const url = `${baseUrl}/secure-input?token=${token}`;
 
+  console.log(
+    `[secure-input-token] Generated URL: ${url} (baseUrl from env: ${process.env.OPENCLAW_SECURE_INPUT_URL})`,
+  );
+
   return { token, url, expiresAt };
 }
 
