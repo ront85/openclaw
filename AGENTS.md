@@ -51,15 +51,20 @@
 ## Hetzner Production Deployment
 
 - SSH: `ssh hetzner-openclaw` (configured in `~/.ssh/config` pointing to `5.161.46.0`)
-- Deploy: Use `/hetzner-deploy` skill or run manually:
+- **Preferred**: Use Dokploy auto-deployment (configured for this project)
+  - Push to main branch triggers auto-deploy via Dokploy
+  - Dokploy handles Docker image building and container updates automatically
+  - No manual SCP or image transfer needed
+- **Manual fallback**: Use `/hetzner-deploy` skill or run manually:
   ```bash
   ssh hetzner-openclaw "cd /opt/openclaw && git stash && git pull && git stash pop"
   # Resolve any docker-compose.yml conflicts (keep Traefik labels + dokploy-network)
   ssh hetzner-openclaw "cd /opt/openclaw && docker compose down && docker compose up -d"
   ```
+- **DO NOT**: Build Docker images locally and SCP to server (slow, bypasses CI/CD, wastes bandwidth)
 - Verify: `ssh hetzner-openclaw "cd /opt/openclaw && docker compose logs openclaw-gateway --tail 50"`
 - Check for: `[gateway] listening on ws://0.0.0.0:18789`, `[discord] logged in to discord`
-- **Memory limit**: Server has only 2GB RAM; `docker build` will fail (exit 137). Deploy restarts containers with existing `openclaw:latest` image. For image updates, build locally or wait for CI/CD.
+- **Memory limit**: Server has only 2GB RAM; `docker build` will fail (exit 137). Deploy restarts containers with existing `openclaw:latest` image. For image updates, rely on Dokploy auto-deployment.
 - Config: Production docker-compose.yml includes Traefik reverse proxy labels, dokploy-network, DISCORD_BOT_TOKEN, OPENROUTER_API_KEY, and `--allow-unconfigured` flag
 - Environment: Variables in `/opt/openclaw-data/.env` (not tracked in git)
 - Rollback: `ssh hetzner-openclaw "cd /opt/openclaw && git reset --hard <commit-hash> && docker compose restart"`
