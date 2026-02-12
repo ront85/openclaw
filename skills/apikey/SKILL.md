@@ -12,6 +12,9 @@ metadata:
   }
 user-invocable: true
 disable-model-invocation: true
+command-dispatch: tool
+command-tool: gateway
+command-arg-mode: raw
 ---
 
 # /apikey - Secure API Key Storage
