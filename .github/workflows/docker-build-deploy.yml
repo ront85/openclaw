@@ -49,25 +49,11 @@ jobs:
         run: |
           # Install SSH key
           mkdir -p ~/.ssh
-          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "${{ secrets.HETZNER_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
 
           # Add server to known hosts
           ssh-keyscan -H 5.161.46.0 >> ~/.ssh/known_hosts
 
           # Deploy: pull latest image and restart container
-          ssh -i ~/.ssh/id_rsa root@5.161.46.0 << 'ENDSSH'
-            echo "🔵 Pulling latest OpenClaw image..."
-            docker pull ghcr.io/ront85/openclaw:latest
-
-            echo "🔵 Restarting container..."
-            docker restart openclaw-gateway
-
-            echo "⏳ Waiting for startup..."
-            sleep 15
-
-            echo "✅ Checking gateway status..."
-            docker logs openclaw-gateway --tail 20 | grep -E "(listening on|logged in to discord)" || echo "⚠️ Gateway may still be starting"
-
-            echo "✅ Deployment complete!"
-          ENDSSH
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no deployer@5.161.46.0 "sudo docker pull ghcr.io/ront85/openclaw:latest && sudo docker restart openclaw-gateway && echo '✅ Deployment complete! Waiting for startup...' && sleep 15 && sudo docker logs openclaw-gateway --tail 20"
