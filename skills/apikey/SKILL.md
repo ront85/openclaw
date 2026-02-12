@@ -11,7 +11,7 @@ metadata:
       },
   }
 user-invocable: true
-disable-model-invocation: false
+disable-model-invocation: true
 ---
 
 # /apikey - Secure API Key Storage
