@@ -46,6 +46,13 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Deploy to production server
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENCLAW_GATEWAY_TOKEN: ${{ secrets.OPENCLAW_GATEWAY_TOKEN }}
+          OPENCLAW_SECURE_INPUT_URL: ${{ secrets.OPENCLAW_SECURE_INPUT_URL }}
+          OPENCLAW_CONFIG_DIR: ${{ secrets.OPENCLAW_CONFIG_DIR }}
+          OPENCLAW_WORKSPACE_DIR: ${{ secrets.OPENCLAW_WORKSPACE_DIR }}
         run: |
           # Install SSH key
           mkdir -p ~/.ssh
