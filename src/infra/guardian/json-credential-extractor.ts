@@ -263,6 +263,58 @@ function walkObject(
  * Returns an empty array if valid JSON but no credentials found.
  * Returns extracted credentials if found.
  */
+/**
+ * Redact a credential value for safe display.
+ */
+export function redactValue(value: string): string {
+  if (value.startsWith("-----BEGIN")) {
+    return "-----BEGIN *** PRIVATE KEY ***-----";
+  }
+  if (value.length < 12) {
+    return value.slice(0, 2) + "\u2022\u2022\u2022\u2022" + value.slice(-2);
+  }
+  return value.slice(0, 4) + "\u2022\u2022\u2022\u2022\u2022\u2022" + value.slice(-4);
+}
+
+/**
+ * Walk a parsed JSON object to a given path and set the value.
+ */
+function setAtPath(obj: unknown, path: string[], value: string): void {
+  let current: Record<string, unknown> = obj as Record<string, unknown>;
+  for (let i = 0; i < path.length - 1; i++) {
+    current = current[path[i]] as Record<string, unknown>;
+  }
+  current[path[path.length - 1]] = value;
+}
+
+/**
+ * Produce a redacted copy of the JSON input, replacing extracted credential values
+ * with their redacted forms.
+ */
+export function redactJsonCredentials(text: string, extracted: ExtractedCredential[]): string {
+  const parsed = JSON.parse(text.trim());
+  for (const cred of extracted) {
+    setAtPath(parsed, cred.path, redactValue(cred.value));
+  }
+  return JSON.stringify(parsed, null, 2);
+}
+
+/**
+ * Produce a copy of the JSON input with extracted credential values replaced
+ * by env var references like `${VAR_NAME}`.
+ */
+export function replaceJsonCredentials(
+  text: string,
+  extracted: ExtractedCredential[],
+  varNames: string[],
+): string {
+  const parsed = JSON.parse(text.trim());
+  for (let i = 0; i < extracted.length; i++) {
+    setAtPath(parsed, extracted[i].path, `\${${varNames[i]}}`);
+  }
+  return JSON.stringify(parsed, null, 2);
+}
+
 export function extractJsonCredentials(
   text: string,
   serviceName?: string,

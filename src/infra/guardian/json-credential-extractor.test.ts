@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { extractJsonCredentials } from "./json-credential-extractor.js";
+import {
+  extractJsonCredentials,
+  redactValue,
+  redactJsonCredentials,
+  replaceJsonCredentials,
+} from "./json-credential-extractor.js";
 
 describe("json-credential-extractor", () => {
   describe("extractJsonCredentials", () => {
@@ -387,6 +392,70 @@ describe("json-credential-extractor", () => {
       expect(result).not.toBeNull();
       expect(result).toHaveLength(1);
       expect(result![0].fieldName).toBe("conversion_label");
+    });
+
+    it("redactValue: masks PEM keys", () => {
+      const pem = "-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----";
+      expect(redactValue(pem)).toBe("-----BEGIN *** PRIVATE KEY ***-----");
+    });
+
+    it("redactValue: masks short values (< 12 chars)", () => {
+      expect(redactValue("abcd1234")).toBe("ab\u2022\u2022\u2022\u202234");
+    });
+
+    it("redactValue: masks normal values (>= 12 chars)", () => {
+      expect(redactValue("AaBbCcDdEeFf1234567890")).toBe(
+        "AaBb\u2022\u2022\u2022\u2022\u2022\u20227890",
+      );
+    });
+
+    it("redactJsonCredentials: replaces credential values with redacted forms", () => {
+      const json = JSON.stringify({
+        google_ads: {
+          developer_token: "AaBbCcDdEeFf1234567890AbCdEfGh",
+          customer_id: "123-456-7890",
+        },
+      });
+      const extracted = extractJsonCredentials(json)!;
+      expect(extracted).toHaveLength(1);
+
+      const redacted = redactJsonCredentials(json, extracted);
+      const parsed = JSON.parse(redacted);
+      expect(parsed.google_ads.developer_token).toBe(
+        "AaBb\u2022\u2022\u2022\u2022\u2022\u2022EfGh",
+      );
+      expect(parsed.google_ads.customer_id).toBe("123-456-7890");
+    });
+
+    it("replaceJsonCredentials: replaces credential values with env var references", () => {
+      const json = JSON.stringify({
+        google_ads: {
+          developer_token: "AaBbCcDdEeFf1234567890AbCdEfGh",
+          customer_id: "123-456-7890",
+        },
+      });
+      const extracted = extractJsonCredentials(json)!;
+      expect(extracted).toHaveLength(1);
+
+      const replaced = replaceJsonCredentials(json, extracted, ["MY_VAR_1"]);
+      const parsed = JSON.parse(replaced);
+      expect(parsed.google_ads.developer_token).toBe("${MY_VAR_1}");
+      expect(parsed.google_ads.customer_id).toBe("123-456-7890");
+    });
+
+    it("redactJsonCredentials: handles multiple credentials", () => {
+      const json = JSON.stringify({
+        developer_token: "AaBbCcDdEeFf1234567890AbCdEfGh",
+        access_token: "ya29.a0AfH6SMBx-example-token-value1234",
+      });
+      const extracted = extractJsonCredentials(json)!;
+      expect(extracted).toHaveLength(2);
+
+      const redacted = redactJsonCredentials(json, extracted);
+      const parsed = JSON.parse(redacted);
+      // Both should be redacted
+      expect(parsed.developer_token).not.toBe("AaBbCcDdEeFf1234567890AbCdEfGh");
+      expect(parsed.access_token).not.toBe("ya29.a0AfH6SMBx-example-token-value1234");
     });
 
     it("handles theiss.design full config correctly", () => {

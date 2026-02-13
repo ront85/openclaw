@@ -186,6 +186,7 @@ export async function storeApiKey(
   provider: string | null,
   envPath?: string,
   source?: StoredKeyMetadata["source"],
+  customVarName?: string,
 ): Promise<{ varName: string; isDuplicate: boolean }> {
   // Ensure cache is populated from disk on first call
   await ensureCacheLoaded(envPath);
@@ -200,7 +201,7 @@ export async function storeApiKey(
 
   // Generate variable name
   const timestamp = Date.now();
-  const varName = generateVarName(provider, timestamp);
+  const varName = customVarName ?? generateVarName(provider, timestamp);
 
   // Store in .env
   await atomicEnvWrite({ [varName]: key }, envPath);

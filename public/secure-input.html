@@ -27,7 +27,7 @@
         background: white;
         border-radius: 12px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        max-width: 600px;
+        max-width: 680px;
         width: 100%;
         padding: 40px;
       }
@@ -115,11 +115,8 @@
         font-size: 13px;
       }
 
-      .submit-btn {
-        width: 100%;
+      .btn {
         padding: 14px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
         border: none;
         border-radius: 8px;
         font-size: 16px;
@@ -130,14 +127,30 @@
           box-shadow 0.2s;
       }
 
-      .submit-btn:hover:not(:disabled) {
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        width: 100%;
+      }
+
+      .btn-primary:hover:not(:disabled) {
         transform: translateY(-2px);
         box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
       }
 
-      .submit-btn:disabled {
+      .btn-primary:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+
+      .btn-secondary {
+        background: #f0f0f0;
+        color: #333;
+        padding: 12px 24px;
+      }
+
+      .btn-secondary:hover {
+        background: #e0e0e0;
       }
 
       .info-box {
@@ -260,6 +273,228 @@
           opacity: 0.5;
         }
       }
+
+      /* Phase 2: Preview styles */
+      #phase2 {
+        display: none;
+      }
+
+      .section-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .section-label::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e0e0e0;
+      }
+
+      .redacted-display {
+        position: relative;
+        margin-bottom: 24px;
+      }
+
+      .redacted-display textarea {
+        width: 100%;
+        min-height: 120px;
+        max-height: 260px;
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        resize: vertical;
+        background: #fafafa;
+        color: #555;
+      }
+
+      .redacted-display textarea:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .copy-btn {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        color: #555;
+        transition: all 0.2s;
+      }
+
+      .copy-btn:hover {
+        background: #f0f0f0;
+        border-color: #bbb;
+      }
+
+      .copy-btn.copied {
+        background: #e8f5e9;
+        border-color: #4caf50;
+        color: #4caf50;
+      }
+
+      .redacted-hint {
+        font-size: 12px;
+        color: #888;
+        margin-top: 6px;
+      }
+
+      .key-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        transition: all 0.3s;
+        position: relative;
+      }
+
+      .key-card.removed {
+        opacity: 0.4;
+        background: #f9f9f9;
+      }
+
+      .key-card.removed .key-card-field,
+      .key-card.removed .key-card-value,
+      .key-card.removed .var-name-input {
+        text-decoration: line-through;
+      }
+
+      .key-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .key-card-field {
+        font-weight: 600;
+        color: #333;
+        font-size: 14px;
+      }
+
+      .remove-btn {
+        background: none;
+        border: none;
+        font-size: 18px;
+        cursor: pointer;
+        color: #aaa;
+        padding: 2px 6px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        line-height: 1;
+      }
+
+      .remove-btn:hover {
+        background: #ffebee;
+        color: #f44336;
+      }
+
+      .key-card.removed .remove-btn {
+        color: #4caf50;
+      }
+
+      .key-card.removed .remove-btn:hover {
+        background: #e8f5e9;
+        color: #4caf50;
+      }
+
+      .key-card-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+        font-size: 13px;
+      }
+
+      .key-card-label {
+        color: #888;
+        min-width: 60px;
+        flex-shrink: 0;
+      }
+
+      .var-name-input {
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        padding: 3px 6px;
+        flex: 1;
+        min-width: 0;
+        background: transparent;
+        transition: all 0.2s;
+      }
+
+      .var-name-input:hover {
+        border-color: #e0e0e0;
+        background: #fafafa;
+      }
+
+      .var-name-input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+      }
+
+      .var-name-input.invalid {
+        border-color: #f44336;
+        background: #fff5f5;
+      }
+
+      .key-card-value {
+        font-family: "Courier New", monospace;
+        color: #666;
+        font-size: 13px;
+      }
+
+      .preview-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      .preview-actions .btn-primary {
+        flex: 1;
+      }
+
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 14px;
+        color: #555;
+      }
+
+      .checkbox-row input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #667eea;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 30px;
+        color: #888;
+      }
+
+      .empty-state p {
+        margin-bottom: 8px;
+      }
     </style>
   </head>
   <body>
@@ -279,57 +514,97 @@
         </ul>
       </div>
 
-      <form id="keyForm">
-        <div class="form-group">
-          <label for="serviceName">Service Name (optional):</label>
-          <input
-            type="text"
-            id="serviceName"
-            name="serviceName"
-            placeholder="e.g., Odoo, Google Ads, Salesforce, etc."
-            autocomplete="off"
-            style="
-              width: 100%;
-              padding: 12px;
-              border: 2px solid #e0e0e0;
-              border-radius: 8px;
-              font-size: 14px;
-            "
-          />
-          <small style="color: #666; font-size: 12px; display: block; margin-top: 4px">
-            Helps identify what this key is for. Will be saved as
-            OPENCLAW_API_KEY_SERVICENAME_timestamp
-          </small>
-        </div>
+      <!-- Phase 1: Input -->
+      <div id="phase1">
+        <form id="keyForm">
+          <div class="form-group">
+            <label for="serviceName">Service Name (optional):</label>
+            <input
+              type="text"
+              id="serviceName"
+              name="serviceName"
+              placeholder="e.g., Odoo, Google Ads, Salesforce, etc."
+              autocomplete="off"
+              style="
+                width: 100%;
+                padding: 12px;
+                border: 2px solid #e0e0e0;
+                border-radius: 8px;
+                font-size: 14px;
+              "
+            />
+            <small style="color: #666; font-size: 12px; display: block; margin-top: 4px">
+              Helps identify what this key is for. Will be saved as
+              OPENCLAW_API_KEY_SERVICENAME_timestamp
+            </small>
+          </div>
 
-        <div class="form-group">
-          <label for="keyInput">Paste your API key(s) here:</label>
-          <textarea
-            id="keyInput"
-            name="value"
-            placeholder="sk-proj-abc123...
+          <div class="form-group">
+            <label for="keyInput">Paste your API key(s) here:</label>
+            <textarea
+              id="keyInput"
+              name="value"
+              placeholder="sk-proj-abc123...
 or paste multiple keys (one per line)
 or paste .env file contents
 or paste entire config file"
-            autocomplete="off"
-            spellcheck="false"
-          ></textarea>
-        </div>
+              autocomplete="off"
+              spellcheck="false"
+            ></textarea>
+          </div>
 
-        <div class="form-group">
-          <label>Or upload a file:</label>
-          <div class="file-upload" id="fileUpload">
-            <input type="file" id="fileInput" accept=".txt,.env,image/*" />
-            <label for="fileInput" class="file-upload-label">
-              <strong>Click to upload</strong> or drag and drop<br />
-              <small>.txt, .env, or image files</small>
-            </label>
-            <div class="file-name" id="fileName"></div>
+          <div class="form-group">
+            <label>Or upload a file:</label>
+            <div class="file-upload" id="fileUpload">
+              <input type="file" id="fileInput" accept=".txt,.env,image/*" />
+              <label for="fileInput" class="file-upload-label">
+                <strong>Click to upload</strong> or drag and drop<br />
+                <small>.txt, .env, or image files</small>
+              </label>
+              <div class="file-name" id="fileName"></div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="extractBtn">Extract Keys</button>
+        </form>
+      </div>
+
+      <!-- Phase 2: Preview & Edit -->
+      <div id="phase2">
+        <div id="redactedSection" class="redacted-display" style="display: none">
+          <div class="section-label">Your Input (redacted)</div>
+          <textarea id="redactedInput" readonly></textarea>
+          <button class="copy-btn" id="copyBtn">📋 Copy</button>
+          <div class="redacted-hint">
+            Credential values are masked above. Copy this to share non-secret config with the agent.
           </div>
         </div>
 
-        <button type="submit" class="submit-btn" id="submitBtn">Submit Securely</button>
-      </form>
+        <div class="section-label">
+          Extracted Credentials (<span id="extractedCount">0</span> found)
+        </div>
+
+        <div id="keyCards"></div>
+
+        <div id="emptyState" class="empty-state" style="display: none">
+          <p>No credentials detected in your input.</p>
+          <p style="font-size: 13px">Ensure field names contain key, token, secret, or password.</p>
+        </div>
+
+        <div id="checkboxes" style="margin-top: 16px">
+          <div class="checkbox-row">
+            <input type="checkbox" id="chkPassRemaining" />
+            <label for="chkPassRemaining" style="font-weight: normal; margin-bottom: 0">
+              Pass remaining configuration to agent (with env var references)
+            </label>
+          </div>
+        </div>
+
+        <div class="preview-actions">
+          <button class="btn btn-secondary" id="backBtn">← Back</button>
+          <button class="btn btn-primary" id="storeBtn" disabled>Store 0 Keys</button>
+        </div>
+      </div>
 
       <div class="loading" id="loading">
         <div class="spinner"></div>
@@ -348,12 +623,24 @@ or paste entire config file"
     </div>
 
     <script>
-      const form = document.getElementById("keyForm");
+      // DOM refs
+      const phase1 = document.getElementById("phase1");
+      const phase2 = document.getElementById("phase2");
+      const keyForm = document.getElementById("keyForm");
       const keyInput = document.getElementById("keyInput");
       const fileInput = document.getElementById("fileInput");
       const fileUpload = document.getElementById("fileUpload");
-      const fileName = document.getElementById("fileName");
-      const submitBtn = document.getElementById("submitBtn");
+      const fileNameEl = document.getElementById("fileName");
+      const extractBtn = document.getElementById("extractBtn");
+      const backBtn = document.getElementById("backBtn");
+      const storeBtn = document.getElementById("storeBtn");
+      const copyBtn = document.getElementById("copyBtn");
+      const redactedSection = document.getElementById("redactedSection");
+      const redactedInput = document.getElementById("redactedInput");
+      const keyCards = document.getElementById("keyCards");
+      const emptyState = document.getElementById("emptyState");
+      const extractedCount = document.getElementById("extractedCount");
+      const chkPassRemaining = document.getElementById("chkPassRemaining");
       const loading = document.getElementById("loading");
       const success = document.getElementById("success");
       const error = document.getElementById("error");
@@ -361,14 +648,17 @@ or paste entire config file"
       const errorMessage = document.getElementById("errorMessage");
       const expiryEl = document.getElementById("expiry");
 
-      // Get token from URL
+      // State
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get("token");
       let sessionExpired = false;
+      let originalValue = "";
+      let previewData = null;
+      let removedSet = new Set();
 
       if (!token) {
         showError("Invalid or missing token. Please request a new secure input link.");
-        submitBtn.disabled = true;
+        extractBtn.disabled = true;
       }
 
       // Countdown timer
@@ -412,7 +702,8 @@ or paste entire config file"
         sessionExpired = true;
         expiryEl.textContent = "EXPIRED";
         expiryEl.className = "critical";
-        submitBtn.disabled = true;
+        extractBtn.disabled = true;
+        storeBtn.disabled = true;
         keyInput.disabled = true;
         document.getElementById("serviceName").disabled = true;
         fileInput.disabled = true;
@@ -445,7 +736,7 @@ or paste entire config file"
             if (data.used) {
               expiryEl.textContent = "ALREADY USED";
               expiryEl.className = "critical";
-              submitBtn.disabled = true;
+              extractBtn.disabled = true;
               showError("This token has already been used. Please request a new /apikey link.");
               return;
             }
@@ -465,25 +756,24 @@ or paste entire config file"
       // File upload handling
       fileInput.addEventListener("change", async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file) {
+          return;
+        }
 
-        fileName.textContent = `Selected: ${file.name}`;
+        fileNameEl.textContent = "Selected: " + file.name;
 
         try {
           if (file.type.startsWith("image/")) {
-            // For images, we'll use OCR (future enhancement)
-            // For now, just notify the user
             showError("Image OCR not yet implemented. Please paste text directly.");
             fileInput.value = "";
-            fileName.textContent = "";
+            fileNameEl.textContent = "";
             return;
           }
 
-          // Read text file
           const text = await file.text();
           keyInput.value = text;
         } catch (err) {
-          showError(`Failed to read file: ${err.message}`);
+          showError("Failed to read file: " + err.message);
         }
       });
 
@@ -511,8 +801,8 @@ or paste entire config file"
         }
       });
 
-      // Form submission
-      form.addEventListener("submit", async (e) => {
+      // Phase 1 → Extract Keys
+      keyForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         if (sessionExpired) {
@@ -528,17 +818,16 @@ or paste entire config file"
           return;
         }
 
-        submitBtn.disabled = true;
+        originalValue = keyInput.value;
+        extractBtn.disabled = true;
         loading.classList.add("show");
         success.classList.remove("show");
         error.classList.remove("show");
 
         try {
-          const response = await fetch("/api/secure-input/submit", {
+          const response = await fetch("/api/secure-input/preview", {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               token,
               value,
@@ -549,28 +838,229 @@ or paste entire config file"
           const result = await response.json();
 
           if (!response.ok || !result.success) {
-            throw new Error(result.error || "Submission failed");
+            throw new Error(result.error || "Preview failed");
           }
 
-          // Success!
-          const count = result.data.count;
-          const stored = result.data.stored;
-          const varNames = stored.map((s) => s.varName).join(", ");
-
-          showSuccess(
-            `Successfully stored ${count} API key(s):\n${varNames}\n\nYou can close this window.`,
-          );
-          keyInput.value = "";
-          fileInput.value = "";
-          fileName.textContent = "";
+          previewData = result.data;
+          removedSet = new Set();
+          showPhase2();
         } catch (err) {
           showError(err.message);
-          submitBtn.disabled = false;
+          extractBtn.disabled = false;
         } finally {
           loading.classList.remove("show");
         }
       });
 
+      // Show Phase 2
+      function showPhase2() {
+        phase1.style.display = "none";
+        phase2.style.display = "block";
+
+        const items = previewData.extracted;
+
+        // Redacted input display
+        if (previewData.redactedInput) {
+          redactedSection.style.display = "block";
+          redactedInput.value = previewData.redactedInput;
+        } else {
+          redactedSection.style.display = "none";
+        }
+
+        // Build key cards
+        keyCards.innerHTML = "";
+        extractedCount.textContent = String(items.length);
+
+        if (items.length === 0) {
+          emptyState.style.display = "block";
+          storeBtn.disabled = true;
+          storeBtn.textContent = "Store 0 Keys";
+          document.getElementById("checkboxes").style.display = "none";
+          return;
+        }
+
+        emptyState.style.display = "none";
+        document.getElementById("checkboxes").style.display = "block";
+
+        // Only show "pass remaining" checkbox for JSON inputs
+        chkPassRemaining.parentElement.style.display = previewData.isJson ? "flex" : "none";
+
+        for (const item of items) {
+          const card = document.createElement("div");
+          card.className = "key-card";
+          card.dataset.index = String(item.index);
+
+          card.innerHTML =
+            '<div class="key-card-header">' +
+            '<span class="key-card-field">' +
+            escapeHtml(item.fieldName) +
+            (item.path.length > 1
+              ? ' <span style="color:#aaa;font-weight:normal;font-size:12px">(' +
+                escapeHtml(item.path.slice(0, -1).join(".")) +
+                ")</span>"
+              : "") +
+            "</span>" +
+            '<button class="remove-btn" title="Remove this key">×</button>' +
+            "</div>" +
+            '<div class="key-card-row">' +
+            '<span class="key-card-label">Variable:</span>' +
+            '<input class="var-name-input" type="text" value="' +
+            escapeAttr(item.suggestedVarName) +
+            '" spellcheck="false" />' +
+            "</div>" +
+            '<div class="key-card-row">' +
+            '<span class="key-card-label">Value:</span>' +
+            '<span class="key-card-value">' +
+            escapeHtml(item.redactedValue) +
+            "</span>" +
+            "</div>";
+
+          // Remove toggle
+          const removeBtn = card.querySelector(".remove-btn");
+          removeBtn.addEventListener("click", () => {
+            const idx = Number(card.dataset.index);
+            if (removedSet.has(idx)) {
+              removedSet.delete(idx);
+              card.classList.remove("removed");
+              removeBtn.title = "Remove this key";
+              removeBtn.textContent = "\u00d7";
+            } else {
+              removedSet.add(idx);
+              card.classList.add("removed");
+              removeBtn.title = "Restore this key";
+              removeBtn.textContent = "\u21a9";
+            }
+            updateStoreButton();
+          });
+
+          // Validate var name on input
+          const varInput = card.querySelector(".var-name-input");
+          varInput.addEventListener("input", () => {
+            const valid = /^[A-Z_][A-Z0-9_]*$/.test(varInput.value);
+            varInput.classList.toggle("invalid", !valid);
+            updateStoreButton();
+          });
+
+          keyCards.appendChild(card);
+        }
+
+        updateStoreButton();
+      }
+
+      function updateStoreButton() {
+        const items = previewData ? previewData.extracted : [];
+        const activeCount = items.filter((_, i) => !removedSet.has(items[i].index)).length;
+
+        // Check for invalid var names
+        let hasInvalid = false;
+        for (const input of keyCards.querySelectorAll(".var-name-input")) {
+          const card = input.closest(".key-card");
+          if (removedSet.has(Number(card.dataset.index))) {
+            continue;
+          }
+          if (input.classList.contains("invalid")) {
+            hasInvalid = true;
+            break;
+          }
+        }
+
+        storeBtn.textContent = "Store " + activeCount + " Key" + (activeCount !== 1 ? "s" : "");
+        storeBtn.disabled = activeCount === 0 || hasInvalid || sessionExpired;
+      }
+
+      // Back button
+      backBtn.addEventListener("click", () => {
+        phase2.style.display = "none";
+        phase1.style.display = "block";
+        extractBtn.disabled = false;
+        success.classList.remove("show");
+        error.classList.remove("show");
+      });
+
+      // Copy redacted content
+      copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(redactedInput.value).then(() => {
+          copyBtn.textContent = "Copied!";
+          copyBtn.classList.add("copied");
+          setTimeout(() => {
+            copyBtn.textContent = "📋 Copy";
+            copyBtn.classList.remove("copied");
+          }, 2000);
+        });
+      });
+
+      // Store keys
+      storeBtn.addEventListener("click", async () => {
+        if (sessionExpired) {
+          showError("This session has expired. Please request a new /apikey link in Discord.");
+          return;
+        }
+
+        storeBtn.disabled = true;
+        backBtn.disabled = true;
+        loading.classList.add("show");
+        success.classList.remove("show");
+        error.classList.remove("show");
+
+        try {
+          // Collect custom variable names
+          const variableNames = {};
+          for (const input of keyCards.querySelectorAll(".var-name-input")) {
+            const card = input.closest(".key-card");
+            const idx = card.dataset.index;
+            const item = previewData.extracted.find((e) => e.index === Number(idx));
+            if (item && input.value !== item.suggestedVarName) {
+              variableNames[idx] = input.value;
+            }
+          }
+
+          const serviceName = document.getElementById("serviceName").value.trim();
+
+          const payload = {
+            token,
+            value: originalValue,
+            serviceName: serviceName || undefined,
+            variableNames: Object.keys(variableNames).length > 0 ? variableNames : undefined,
+            removedIndices: removedSet.size > 0 ? Array.from(removedSet) : undefined,
+            passRemainingConfig: chkPassRemaining.checked || undefined,
+          };
+
+          const response = await fetch("/api/secure-input/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || "Submission failed");
+          }
+
+          const count = result.data.count;
+          const stored = result.data.stored;
+          const varNames = stored.map((s) => s.varName).join(", ");
+
+          showSuccess(
+            "Successfully stored " +
+              count +
+              " API key(s):\n" +
+              varNames +
+              "\n\nYou can close this window.",
+          );
+
+          // Hide the form elements
+          phase2.style.display = "none";
+        } catch (err) {
+          showError(err.message);
+          storeBtn.disabled = false;
+          backBtn.disabled = false;
+        } finally {
+          loading.classList.remove("show");
+        }
+      });
+
+      // Helpers
       function showSuccess(message) {
         successMessage.textContent = message;
         success.classList.add("show");
@@ -581,6 +1071,20 @@ or paste entire config file"
         errorMessage.textContent = message;
         error.classList.add("show");
         success.classList.remove("show");
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function escapeAttr(str) {
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/"/g, "&quot;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
     </script>
   </body>

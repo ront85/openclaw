@@ -446,6 +446,158 @@ export function createGatewayHttpServer(opts: {
         return;
       }
 
+      // Secure input preview — extract credentials without consuming the token
+      if (url.pathname === "/api/secure-input/preview") {
+        if (req.method !== "POST") {
+          res.statusCode = 405;
+          res.setHeader("Allow", "POST");
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ success: false, error: "Method Not Allowed" }));
+          return;
+        }
+
+        try {
+          const body = await readJsonBody(req, 1024 * 1024);
+          if (!body.ok) {
+            sendJson(res, 400, { success: false, error: body.error });
+            return;
+          }
+
+          const {
+            token: previewToken,
+            value: previewValue,
+            serviceName: previewService,
+          } = body.value as { token?: string; value?: string; serviceName?: string };
+
+          if (!previewToken || !previewValue) {
+            sendJson(res, 400, { success: false, error: "token and value are required" });
+            return;
+          }
+
+          const { validateSecureInputToken } = await import("./secure-input-tokens.js");
+          const tokenData = validateSecureInputToken(previewToken);
+          if (!tokenData) {
+            sendJson(res, 400, {
+              success: false,
+              error: "Invalid, expired, or already used token",
+            });
+            return;
+          }
+
+          const {
+            extractJsonCredentials,
+            redactValue,
+            redactJsonCredentials,
+            replaceJsonCredentials,
+          } = await import("../infra/guardian/json-credential-extractor.js");
+          const { detectApiKeys, inferProvider } =
+            await import("../infra/guardian/api-key-detector.js");
+          const { generateVarName } = await import("../infra/guardian/env-manager.js");
+
+          type PreviewItem = {
+            index: number;
+            fieldName: string;
+            provider: string | null;
+            suggestedVarName: string;
+            redactedValue: string;
+            path: string[];
+          };
+
+          const items: PreviewItem[] = [];
+          let redactedInput: string | null = null;
+          let remainingContent: string | null = null;
+          let isJson = false;
+
+          const jsonCredentials = extractJsonCredentials(previewValue, previewService);
+
+          if (jsonCredentials !== null && jsonCredentials.length > 0) {
+            isJson = true;
+            const now = Date.now();
+            const suggestedNames: string[] = [];
+            for (let i = 0; i < jsonCredentials.length; i++) {
+              const cred = jsonCredentials[i];
+              const varName = generateVarName(cred.provider, now + i);
+              suggestedNames.push(varName);
+              items.push({
+                index: i,
+                fieldName: cred.fieldName,
+                provider: cred.provider,
+                suggestedVarName: varName,
+                redactedValue: redactValue(cred.value),
+                path: cred.path,
+              });
+            }
+            redactedInput = redactJsonCredentials(previewValue, jsonCredentials);
+            remainingContent = replaceJsonCredentials(
+              previewValue,
+              jsonCredentials,
+              suggestedNames,
+            );
+          } else if (jsonCredentials !== null) {
+            // Valid JSON but no credentials
+            isJson = true;
+          } else {
+            // Not JSON — try regex detection or treat as single raw key
+            const detected = detectApiKeys(previewValue, {
+              enabled: true,
+              tier1: "auto-filter",
+              tier2: "auto-filter",
+              tier3: "auto-filter",
+              minKeyLength: 12,
+              entropyThreshold: 3.0,
+            });
+
+            if (detected.length > 0) {
+              const now = Date.now();
+              for (let i = 0; i < detected.length; i++) {
+                const key = detected[i];
+                const provider = previewService || key.provider;
+                const varName = generateVarName(provider, now + i);
+                items.push({
+                  index: i,
+                  fieldName: key.provider ?? "raw_key",
+                  provider,
+                  suggestedVarName: varName,
+                  redactedValue: redactValue(key.value),
+                  path: [],
+                });
+              }
+            } else {
+              // Single raw key
+              const trimmed = previewValue.trim();
+              if (trimmed.length >= 8) {
+                const provider = previewService || inferProvider(trimmed);
+                const varName = generateVarName(provider, Date.now());
+                items.push({
+                  index: 0,
+                  fieldName: provider ?? "raw_key",
+                  provider,
+                  suggestedVarName: varName,
+                  redactedValue: redactValue(trimmed),
+                  path: [],
+                });
+              }
+            }
+          }
+
+          sendJson(res, 200, {
+            success: true,
+            data: {
+              extracted: items,
+              redactedInput,
+              remainingContent,
+              isJson,
+            },
+          });
+          return;
+        } catch (error) {
+          const safeMsg = error instanceof Error ? error.message : String(error);
+          log.error("secure-input preview error", { message: safeMsg });
+          sendJson(res, 500, { success: false, error: "Internal Server Error" });
+          return;
+        }
+      }
+
       // Secure input API endpoint for form submission
       if (url.pathname === "/api/secure-input/submit") {
         if (req.method !== "POST") {
@@ -463,15 +615,35 @@ export function createGatewayHttpServer(opts: {
             return;
           }
 
-          const { token, value, serviceName } = body.value as {
-            token?: string;
-            value?: string;
-            serviceName?: string;
-          };
+          const { token, value, serviceName, variableNames, removedIndices, passRemainingConfig } =
+            body.value as {
+              token?: string;
+              value?: string;
+              serviceName?: string;
+              variableNames?: Record<string, string>;
+              removedIndices?: number[];
+              passRemainingConfig?: boolean;
+            };
           if (!token || !value) {
             sendJson(res, 400, { success: false, error: "token and value are required" });
             return;
           }
+
+          // Validate custom variable names
+          const VAR_NAME_RE = /^[A-Z_][A-Z0-9_]*$/;
+          if (variableNames) {
+            for (const [, name] of Object.entries(variableNames)) {
+              if (!VAR_NAME_RE.test(name)) {
+                sendJson(res, 400, {
+                  success: false,
+                  error: `Invalid variable name: ${name}. Must match ^[A-Z_][A-Z0-9_]*$`,
+                });
+                return;
+              }
+            }
+          }
+
+          const removedSet = new Set(removedIndices ?? []);
 
           // Import secure input handlers
           const { validateSecureInputToken, consumeSecureInputToken } =
@@ -490,7 +662,7 @@ export function createGatewayHttpServer(opts: {
           }
 
           // Try JSON-aware extraction first (handles config files with multiple credentials)
-          const { extractJsonCredentials } =
+          const { extractJsonCredentials, replaceJsonCredentials } =
             await import("../infra/guardian/json-credential-extractor.js");
           const { inferProvider } = await import("../infra/guardian/api-key-detector.js");
           const jsonCredentials = extractJsonCredentials(value, serviceName);
@@ -498,14 +670,33 @@ export function createGatewayHttpServer(opts: {
           const stored: Array<{ provider: string | null; varName: string }> = [];
 
           if (jsonCredentials !== null && jsonCredentials.length > 0) {
-            // Valid JSON with credentials found
-            for (const cred of jsonCredentials) {
-              const { varName } = await storeApiKey(cred.value, cred.provider, undefined, {
-                agentId: tokenData.agentId,
-                sessionKey: tokenData.channelId ?? "secure-input",
-                hookType: "secure-input",
-              });
+            // Valid JSON with credentials found — filter out removed indices
+            for (let i = 0; i < jsonCredentials.length; i++) {
+              if (removedSet.has(i)) {
+                continue;
+              }
+              const cred = jsonCredentials[i];
+              const customName = variableNames?.[String(i)];
+              const { varName } = await storeApiKey(
+                cred.value,
+                cred.provider,
+                undefined,
+                {
+                  agentId: tokenData.agentId,
+                  sessionKey: tokenData.channelId ?? "secure-input",
+                  hookType: "secure-input",
+                },
+                customName,
+              );
               stored.push({ provider: cred.provider, varName });
+            }
+
+            if (stored.length === 0) {
+              sendJson(res, 400, {
+                success: false,
+                error: "All credentials were removed. Nothing to store.",
+              });
+              return;
             }
           } else if (jsonCredentials !== null) {
             // Valid JSON but no credentials detected
@@ -527,7 +718,12 @@ export function createGatewayHttpServer(opts: {
             });
 
             if (detected.length > 0) {
-              for (const key of detected) {
+              for (let i = 0; i < detected.length; i++) {
+                if (removedSet.has(i)) {
+                  continue;
+                }
+                const key = detected[i];
+                const customName = variableNames?.[String(i)];
                 const { varName } = await storeApiKey(
                   key.value,
                   serviceName || key.provider,
@@ -537,46 +733,91 @@ export function createGatewayHttpServer(opts: {
                     sessionKey: tokenData.channelId ?? "secure-input",
                     hookType: "secure-input",
                   },
+                  customName,
                 );
                 stored.push({ provider: serviceName || key.provider, varName });
               }
             } else {
               // User explicitly submitted through /apikey - trust their input.
               // Store the raw value as-is when auto-detection finds nothing.
-              const trimmed = value.trim();
-              if (trimmed.length < 8) {
-                sendJson(res, 400, {
-                  success: false,
-                  error: "Value too short to be an API key (minimum 8 characters)",
-                });
-                return;
+              if (!removedSet.has(0)) {
+                const trimmed = value.trim();
+                if (trimmed.length < 8) {
+                  sendJson(res, 400, {
+                    success: false,
+                    error: "Value too short to be an API key (minimum 8 characters)",
+                  });
+                  return;
+                }
+                const provider = serviceName || inferProvider(trimmed);
+                const customName = variableNames?.["0"];
+                const { varName } = await storeApiKey(
+                  trimmed,
+                  provider,
+                  undefined,
+                  {
+                    agentId: tokenData.agentId,
+                    sessionKey: tokenData.channelId ?? "secure-input",
+                    hookType: "secure-input",
+                  },
+                  customName,
+                );
+                stored.push({ provider, varName });
               }
-              const provider = serviceName || inferProvider(trimmed);
-              const { varName } = await storeApiKey(trimmed, provider, undefined, {
-                agentId: tokenData.agentId,
-                sessionKey: tokenData.channelId ?? "secure-input",
-                hookType: "secure-input",
-              });
-              stored.push({ provider, varName });
             }
           }
 
           // Only consume the token after successful storage
           consumeSecureInputToken(token);
 
+          // Build remaining config content for Discord if requested
+          let remainingConfigText: string | null = null;
+          if (
+            passRemainingConfig &&
+            jsonCredentials !== null &&
+            jsonCredentials.length > 0 &&
+            stored.length > 0
+          ) {
+            // Build varNames array aligned with the extraction indices
+            const varNamesForReplace: string[] = [];
+            let storedIdx = 0;
+            for (let i = 0; i < jsonCredentials.length; i++) {
+              if (removedSet.has(i)) {
+                varNamesForReplace.push("REMOVED");
+              } else {
+                varNamesForReplace.push(stored[storedIdx].varName);
+                storedIdx++;
+              }
+            }
+            remainingConfigText = replaceJsonCredentials(
+              value,
+              jsonCredentials,
+              varNamesForReplace,
+            );
+          }
+
           // Notify the Discord channel that a key was stored (fire-and-forget)
           if (tokenData.discordChannelId) {
             const varNames = stored.map((s) => s.varName).join(", ");
+            const messages = [
+              `**API key stored securely via /apikey**`,
+              `Variable: \`${varNames}\``,
+              `The key is available in the environment. Use \`process.env.${stored[0]?.varName}\` to access it.`,
+            ];
+
+            if (remainingConfigText) {
+              messages.push(
+                "",
+                "**Remaining configuration (credentials replaced with env var references):**",
+                "```json",
+                remainingConfigText,
+                "```",
+              );
+            }
+
             import("../../discord/send.js")
               .then(({ sendMessageDiscord }) =>
-                sendMessageDiscord(
-                  tokenData.discordChannelId!,
-                  [
-                    `**API key stored securely via /apikey**`,
-                    `Variable: \`${varNames}\``,
-                    `The key is available in the environment. Use \`process.env.${stored[0]?.varName}\` to access it.`,
-                  ].join("\n"),
-                ),
+                sendMessageDiscord(tokenData.discordChannelId!, messages.join("\n")),
               )
               .catch(() => {
                 // best-effort notification

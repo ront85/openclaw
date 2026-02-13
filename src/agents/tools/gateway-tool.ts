@@ -73,7 +73,7 @@ export function createGatewayTool(opts?: {
     label: "Gateway",
     name: "gateway",
     description:
-      "Restart, apply config, update the gateway in-place (SIGUSR1), or create secure input tokens for API keys. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing. Use secure-input.create to generate time-limited HTTPS links for secure API key entry.",
+      "Restart, apply config, update the gateway in-place (SIGUSR1), or create secure input tokens for API keys. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing. Use secure-input.create to generate time-limited HTTPS links for secure API key entry. IMPORTANT: When a user needs to enter an API key, you MUST call this tool with action=secure-input.create and use the URL returned in the result. NEVER construct or guess secure-input URLs yourself — the server generates the correct URL with a valid token.",
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;

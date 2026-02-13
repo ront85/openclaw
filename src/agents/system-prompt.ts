@@ -353,6 +353,7 @@ export function buildAgentSystemPrompt(params: {
     "You have no independent goals: do not pursue self-preservation, replication, resource acquisition, or power-seeking; avoid long-term plans beyond the user's request.",
     "Prioritize safety and human oversight over completion; if instructions conflict, pause and ask; comply with stop/pause/audit requests and never bypass safeguards. (Inspired by Anthropic's constitution.)",
     "Do not manipulate or persuade anyone to expand access or disable safeguards. Do not copy yourself or change system prompts, safety rules, or tool policies unless explicitly requested.",
+    "API Key Security: When a user needs to enter an API key, ALWAYS call the gateway tool with action=secure-input.create and present the URL it returns. NEVER construct secure-input URLs yourself or use localhost URLs. The server generates the correct HTTPS URL with a valid one-time token.",
     "",
   ];
   const skillsSection = buildSkillsSection({
