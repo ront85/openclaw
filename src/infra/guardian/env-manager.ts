@@ -19,6 +19,18 @@ export type StoredKeyMetadata = {
 
 // In-memory cache of stored keys (hash -> metadata)
 const keyCache = new Map<string, StoredKeyMetadata>();
+let cacheInitialized = false;
+
+/**
+ * Ensure cache is populated from disk before first use.
+ */
+async function ensureCacheLoaded(envPath?: string): Promise<void> {
+  if (cacheInitialized) {
+    return;
+  }
+  cacheInitialized = true;
+  await listStoredKeys(envPath);
+}
 
 /**
  * Get default .env file path
@@ -175,6 +187,9 @@ export async function storeApiKey(
   envPath?: string,
   source?: StoredKeyMetadata["source"],
 ): Promise<{ varName: string; isDuplicate: boolean }> {
+  // Ensure cache is populated from disk on first call
+  await ensureCacheLoaded(envPath);
+
   const hash = hashKey(key);
 
   // Check cache for duplicate
@@ -224,8 +239,10 @@ export async function listStoredKeys(envPath?: string): Promise<StoredKeyMetadat
     let metadata = keyCache.get(hash);
 
     if (!metadata) {
-      // Parse variable name to extract metadata
-      const match = varName.match(/^OPENCLAW_API_KEY_([A-Z]+)_(\d+)$/);
+      // Parse variable name: OPENCLAW_API_KEY_{PROVIDER}_{TIMESTAMP}
+      // Provider can have multiple segments (e.g. GOOGLE_ADS_DEVELOPER_TOKEN)
+      // Timestamp is always the last numeric segment
+      const match = varName.match(/^OPENCLAW_API_KEY_(.+)_(\d{10,})$/);
       metadata = {
         varName,
         provider: match?.[1] ?? null,
