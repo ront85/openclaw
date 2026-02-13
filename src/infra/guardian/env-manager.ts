@@ -190,6 +190,11 @@ export async function storeApiKey(
   // Store in .env
   await atomicEnvWrite({ [varName]: key }, envPath);
 
+  // Hot-inject into process.env so tools can use the key immediately
+  // (loadDotEnv only runs at startup, so without this, newly stored keys
+  // are invisible until the process restarts)
+  process.env[varName] = key;
+
   // Cache metadata
   const metadata: StoredKeyMetadata = {
     varName,
