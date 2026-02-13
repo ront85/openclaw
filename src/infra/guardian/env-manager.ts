@@ -32,7 +32,7 @@ export function getDefaultEnvPath(): string {
  * Format: OPENCLAW_API_KEY_{PROVIDER}_{TIMESTAMP_MS}
  */
 export function generateVarName(provider: string | null, timestamp: number): string {
-  const providerPart = provider ?? "UNKNOWN";
+  const providerPart = (provider ?? "UNKNOWN").toUpperCase().replace(/[^A-Z0-9]/g, "_");
   return `OPENCLAW_API_KEY_${providerPart}_${timestamp}`;
 }
 

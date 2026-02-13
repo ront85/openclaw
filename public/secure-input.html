@@ -209,6 +209,57 @@
           transform: rotate(360deg);
         }
       }
+
+      .expired-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .expired-overlay .expired-card {
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        max-width: 400px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      }
+
+      .expired-overlay .expired-card h2 {
+        color: #f44336;
+        margin-bottom: 12px;
+      }
+
+      .expired-overlay .expired-card p {
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      #expiry.warning {
+        color: #e65100;
+      }
+
+      #expiry.critical {
+        color: #f44336;
+        animation: pulse 1s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
     </style>
   </head>
   <body>
@@ -223,7 +274,7 @@
         <ul>
           <li>🔒 HTTPS encrypted transmission</li>
           <li>🚫 Never logged in chat history</li>
-          <li>⏰ This session expires in <strong id="expiry">5 minutes</strong></li>
+          <li>⏰ Time remaining: <strong id="expiry">loading...</strong></li>
           <li>📝 Paste text, upload .txt/.env files, or image screenshots</li>
         </ul>
       </div>
@@ -308,14 +359,107 @@ or paste entire config file"
       const error = document.getElementById("error");
       const successMessage = document.getElementById("successMessage");
       const errorMessage = document.getElementById("errorMessage");
+      const expiryEl = document.getElementById("expiry");
 
       // Get token from URL
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get("token");
+      let sessionExpired = false;
 
       if (!token) {
         showError("Invalid or missing token. Please request a new secure input link.");
         submitBtn.disabled = true;
+      }
+
+      // Countdown timer
+      let expiresAt = null;
+      let countdownInterval = null;
+
+      function formatTime(ms) {
+        if (ms <= 0) {
+          return "0:00";
+        }
+        const totalSec = Math.ceil(ms / 1000);
+        const min = Math.floor(totalSec / 60);
+        const sec = totalSec % 60;
+        return min + ":" + String(sec).padStart(2, "0");
+      }
+
+      function updateCountdown() {
+        if (!expiresAt) {
+          return;
+        }
+        const remaining = expiresAt - Date.now();
+
+        if (remaining <= 0) {
+          clearInterval(countdownInterval);
+          expireSession();
+          return;
+        }
+
+        expiryEl.textContent = formatTime(remaining);
+
+        if (remaining < 30000) {
+          expiryEl.className = "critical";
+        } else if (remaining < 60000) {
+          expiryEl.className = "warning";
+        } else {
+          expiryEl.className = "";
+        }
+      }
+
+      function expireSession() {
+        sessionExpired = true;
+        expiryEl.textContent = "EXPIRED";
+        expiryEl.className = "critical";
+        submitBtn.disabled = true;
+        keyInput.disabled = true;
+        document.getElementById("serviceName").disabled = true;
+        fileInput.disabled = true;
+
+        const overlay = document.createElement("div");
+        overlay.className = "expired-overlay";
+        overlay.innerHTML =
+          '<div class="expired-card">' +
+          '<div style="font-size:48px;margin-bottom:16px">⏰</div>' +
+          "<h2>Session Expired</h2>" +
+          "<p>This secure input link has expired.</p>" +
+          "<p>Please request a new <strong>/apikey</strong> link in Discord.</p>" +
+          "</div>";
+        document.body.appendChild(overlay);
+      }
+
+      // Fetch token status from server
+      if (token) {
+        fetch("/api/secure-input/status?token=" + encodeURIComponent(token))
+          .then(function (r) {
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data.success) {
+              expiryEl.textContent = "EXPIRED";
+              expiryEl.className = "critical";
+              expireSession();
+              return;
+            }
+            if (data.used) {
+              expiryEl.textContent = "ALREADY USED";
+              expiryEl.className = "critical";
+              submitBtn.disabled = true;
+              showError("This token has already been used. Please request a new /apikey link.");
+              return;
+            }
+            if (data.expired) {
+              expireSession();
+              return;
+            }
+            expiresAt = data.expiresAt;
+            updateCountdown();
+            countdownInterval = setInterval(updateCountdown, 1000);
+          })
+          .catch(function () {
+            expiryEl.textContent = "unknown";
+          });
       }
 
       // File upload handling
@@ -370,6 +514,11 @@ or paste entire config file"
       // Form submission
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
+
+        if (sessionExpired) {
+          showError("This session has expired. Please request a new /apikey link in Discord.");
+          return;
+        }
 
         const value = keyInput.value.trim();
         const serviceName = document.getElementById("serviceName").value.trim();

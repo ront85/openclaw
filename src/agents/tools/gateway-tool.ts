@@ -77,7 +77,21 @@ export function createGatewayTool(opts?: {
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
-      const action = readStringParam(params, "action", { required: true });
+      // When called via command-dispatch: tool, the skill dispatcher passes
+      // { command, commandName, skillName } instead of { action, ... }.
+      // Map known skill names to their gateway actions.
+      const action =
+        readStringParam(params, "action") ??
+        (() => {
+          const skillName = readStringParam(params, "skillName");
+          if (skillName === "apikey") {
+            return "secure-input.create";
+          }
+          return undefined;
+        })();
+      if (!action) {
+        throw new Error("action required");
+      }
       if (action === "restart") {
         if (opts?.config?.commands?.restart !== true) {
           throw new Error("Gateway restart is disabled. Set commands.restart=true to enable.");
@@ -252,10 +266,24 @@ export function createGatewayTool(opts?: {
         return jsonResult({ ok: true, result });
       }
       if (action === "secure-input.create") {
+        // Extract Discord channel ID from session key (format: discord:<guildId>:<channelId>)
+        const sessionKey = opts?.agentSessionKey;
+        const discordChannelId = sessionKey?.startsWith("discord:")
+          ? sessionKey.split(":")[2]
+          : undefined;
         const result = await callGatewayTool("secure-input.create", gatewayOpts, {
           agentId: opts?.config?.agents?.defaults?.model?.primary,
-          channelId: opts?.agentSessionKey,
+          channelId: sessionKey,
+          discordChannelId,
         });
+        const secureResult = result as
+          | { token?: string; url?: string; expiresIn?: number }
+          | undefined;
+        if (secureResult?.url) {
+          const mins = Math.floor((secureResult.expiresIn ?? 300) / 60);
+          const text = `🔐 Click here to securely enter your API key:\n${secureResult.url}\n\n⏰ This link expires in ${mins} minutes\n🔒 HTTPS encrypted, key never touches chat history`;
+          return { content: [{ type: "text" as const, text }], details: result };
+        }
         return jsonResult({ ok: true, result });
       }
 

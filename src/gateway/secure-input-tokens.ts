@@ -4,6 +4,8 @@ type SecureInputToken = {
   token: string;
   agentId: string;
   channelId?: string;
+  /** Discord channel ID for sending notification after key storage */
+  discordChannelId?: string;
   purpose: "apikey";
   createdAt: number;
   expiresAt: number;
@@ -29,6 +31,7 @@ setInterval(() => {
 export function createSecureInputToken(params: {
   agentId: string;
   channelId?: string;
+  discordChannelId?: string;
   purpose: "apikey";
 }): { token: string; url: string; expiresAt: number } {
   const token = randomUUID();
@@ -39,6 +42,7 @@ export function createSecureInputToken(params: {
     token,
     agentId: params.agentId,
     channelId: params.channelId,
+    discordChannelId: params.discordChannelId,
     purpose: params.purpose,
     createdAt: now,
     expiresAt,
@@ -57,8 +61,27 @@ export function createSecureInputToken(params: {
 }
 
 /**
- * Validate and consume a secure input token
- * Returns token data if valid, null if invalid/expired/used
+ * Peek at a token's status without consuming it.
+ * Returns expiration info or null if token doesn't exist.
+ */
+export function peekSecureInputToken(
+  token: string,
+): { expiresAt: number; used: boolean; expired: boolean } | null {
+  const data = tokens.get(token);
+  if (!data) {
+    return null;
+  }
+  const now = Date.now();
+  return {
+    expiresAt: data.expiresAt,
+    used: data.used,
+    expired: data.expiresAt < now,
+  };
+}
+
+/**
+ * Validate a secure input token without consuming it.
+ * Returns token data if valid, null if invalid/expired/used.
  */
 export function validateSecureInputToken(token: string): SecureInputToken | null {
   const data = tokens.get(token);
@@ -80,10 +103,17 @@ export function validateSecureInputToken(token: string): SecureInputToken | null
     return null;
   }
 
-  // Mark as used (single-use token)
-  data.used = true;
-
   return data;
+}
+
+/**
+ * Mark a token as consumed (call after successful submission).
+ */
+export function consumeSecureInputToken(token: string): void {
+  const data = tokens.get(token);
+  if (data) {
+    data.used = true;
+  }
 }
 
 /**

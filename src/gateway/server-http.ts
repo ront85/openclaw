@@ -417,6 +417,35 @@ export function createGatewayHttpServer(opts: {
         }
       }
 
+      // Secure input token status (for client-side countdown)
+      if (url.pathname === "/api/secure-input/status") {
+        if (req.method !== "GET") {
+          res.statusCode = 405;
+          res.setHeader("Allow", "GET");
+          res.setHeader("Content-Type", "application/json; charset=utf-8");
+          res.end(JSON.stringify({ success: false, error: "Method Not Allowed" }));
+          return;
+        }
+        const tokenParam = url.searchParams.get("token");
+        if (!tokenParam) {
+          sendJson(res, 400, { success: false, error: "token required" });
+          return;
+        }
+        const { peekSecureInputToken } = await import("./secure-input-tokens.js");
+        const info = peekSecureInputToken(tokenParam);
+        if (!info) {
+          sendJson(res, 404, { success: false, error: "token not found" });
+          return;
+        }
+        sendJson(res, 200, {
+          success: true,
+          expiresAt: info.expiresAt,
+          used: info.used,
+          expired: info.expired,
+        });
+        return;
+      }
+
       // Secure input API endpoint for form submission
       if (url.pathname === "/api/secure-input/submit") {
         if (req.method !== "POST") {
@@ -445,7 +474,8 @@ export function createGatewayHttpServer(opts: {
           }
 
           // Import secure input handlers
-          const { validateSecureInputToken } = await import("./secure-input-tokens.js");
+          const { validateSecureInputToken, consumeSecureInputToken } =
+            await import("./secure-input-tokens.js");
           const { detectApiKeys } = await import("../infra/guardian/api-key-detector.js");
           const { storeApiKey } = await import("../infra/guardian/env-manager.js");
 
@@ -460,42 +490,73 @@ export function createGatewayHttpServer(opts: {
           }
 
           // Detect API keys in the submitted value
+          const { inferProvider } = await import("../infra/guardian/api-key-detector.js");
           const detected = detectApiKeys(value, {
             enabled: true,
             tier1: "auto-filter",
             tier2: "auto-filter",
-            tier3: "allow",
-            minKeyLength: 18,
-            entropyThreshold: 4.5,
+            tier3: "auto-filter",
+            minKeyLength: 12,
+            entropyThreshold: 3.0,
           });
-
-          if (detected.length === 0) {
-            sendJson(res, 400, {
-              success: false,
-              error: "No API keys detected in the provided input",
-            });
-            return;
-          }
 
           // Store all detected keys
           const stored: Array<{ provider: string | null; varName: string }> = [];
 
-          for (const key of detected) {
-            const { varName } = await storeApiKey(
-              key.value,
-              serviceName || key.provider, // Use serviceName if provided, fallback to detected provider
-              undefined, // Use default env path
-              {
-                agentId: tokenData.agentId,
-                sessionKey: tokenData.channelId ?? "secure-input",
-                hookType: "secure-input",
-              },
-            );
-
-            stored.push({
-              provider: serviceName || key.provider,
-              varName,
+          if (detected.length > 0) {
+            for (const key of detected) {
+              const { varName } = await storeApiKey(
+                key.value,
+                serviceName || key.provider,
+                undefined,
+                {
+                  agentId: tokenData.agentId,
+                  sessionKey: tokenData.channelId ?? "secure-input",
+                  hookType: "secure-input",
+                },
+              );
+              stored.push({ provider: serviceName || key.provider, varName });
+            }
+          } else {
+            // User explicitly submitted through /apikey - trust their input.
+            // Store the raw value as-is when auto-detection finds nothing.
+            const trimmed = value.trim();
+            if (trimmed.length < 8) {
+              sendJson(res, 400, {
+                success: false,
+                error: "Value too short to be an API key (minimum 8 characters)",
+              });
+              return;
+            }
+            const provider = serviceName || inferProvider(trimmed);
+            const { varName } = await storeApiKey(trimmed, provider, undefined, {
+              agentId: tokenData.agentId,
+              sessionKey: tokenData.channelId ?? "secure-input",
+              hookType: "secure-input",
             });
+            stored.push({ provider, varName });
+          }
+
+          // Only consume the token after successful storage
+          consumeSecureInputToken(token);
+
+          // Notify the Discord channel that a key was stored (fire-and-forget)
+          if (tokenData.discordChannelId) {
+            const varNames = stored.map((s) => s.varName).join(", ");
+            import("../../discord/send.js")
+              .then(({ sendMessageDiscord }) =>
+                sendMessageDiscord(
+                  tokenData.discordChannelId!,
+                  [
+                    `**API key stored securely via /apikey**`,
+                    `Variable: \`${varNames}\``,
+                    `The key is available in the environment. Use \`process.env.${stored[0]?.varName}\` to access it.`,
+                  ].join("\n"),
+                ),
+              )
+              .catch(() => {
+                // best-effort notification
+              });
           }
 
           sendJson(res, 200, {

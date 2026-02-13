@@ -8,9 +8,10 @@ import { createSecureInputToken, validateSecureInputToken } from "../secure-inpu
  * POST /secure-input/create
  */
 export const secureInputCreate: GatewayRequestHandler = async ({ params, respond }) => {
-  const { agentId, channelId } = params as {
+  const { agentId, channelId, discordChannelId } = params as {
     agentId: string;
     channelId?: string;
+    discordChannelId?: string;
   };
 
   if (!agentId) {
@@ -21,6 +22,7 @@ export const secureInputCreate: GatewayRequestHandler = async ({ params, respond
   const { token, url, expiresAt } = createSecureInputToken({
     agentId,
     channelId,
+    discordChannelId,
     purpose: "apikey",
   });
 
