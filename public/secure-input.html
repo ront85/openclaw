@@ -838,10 +838,11 @@ or paste entire config file"
               })
             : "Unknown";
 
+          const displayName = key.varName.replace(/^OPENCLAW_API_KEY_/, "");
           card.innerHTML =
             '<div class="stored-key-info">' +
             '<div class="stored-key-var">' +
-            escapeHtml(key.varName) +
+            escapeHtml(displayName) +
             "</div>" +
             '<div class="stored-key-meta">' +
             (key.provider ? escapeHtml(key.provider) + " &middot; " : "") +
