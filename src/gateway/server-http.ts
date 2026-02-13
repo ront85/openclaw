@@ -489,52 +489,76 @@ export function createGatewayHttpServer(opts: {
             return;
           }
 
-          // Detect API keys in the submitted value
+          // Try JSON-aware extraction first (handles config files with multiple credentials)
+          const { extractJsonCredentials } =
+            await import("../infra/guardian/json-credential-extractor.js");
           const { inferProvider } = await import("../infra/guardian/api-key-detector.js");
-          const detected = detectApiKeys(value, {
-            enabled: true,
-            tier1: "auto-filter",
-            tier2: "auto-filter",
-            tier3: "auto-filter",
-            minKeyLength: 12,
-            entropyThreshold: 3.0,
-          });
+          const jsonCredentials = extractJsonCredentials(value, serviceName);
 
-          // Store all detected keys
           const stored: Array<{ provider: string | null; varName: string }> = [];
 
-          if (detected.length > 0) {
-            for (const key of detected) {
-              const { varName } = await storeApiKey(
-                key.value,
-                serviceName || key.provider,
-                undefined,
-                {
-                  agentId: tokenData.agentId,
-                  sessionKey: tokenData.channelId ?? "secure-input",
-                  hookType: "secure-input",
-                },
-              );
-              stored.push({ provider: serviceName || key.provider, varName });
-            }
-          } else {
-            // User explicitly submitted through /apikey - trust their input.
-            // Store the raw value as-is when auto-detection finds nothing.
-            const trimmed = value.trim();
-            if (trimmed.length < 8) {
-              sendJson(res, 400, {
-                success: false,
-                error: "Value too short to be an API key (minimum 8 characters)",
+          if (jsonCredentials !== null && jsonCredentials.length > 0) {
+            // Valid JSON with credentials found
+            for (const cred of jsonCredentials) {
+              const { varName } = await storeApiKey(cred.value, cred.provider, undefined, {
+                agentId: tokenData.agentId,
+                sessionKey: tokenData.channelId ?? "secure-input",
+                hookType: "secure-input",
               });
-              return;
+              stored.push({ provider: cred.provider, varName });
             }
-            const provider = serviceName || inferProvider(trimmed);
-            const { varName } = await storeApiKey(trimmed, provider, undefined, {
-              agentId: tokenData.agentId,
-              sessionKey: tokenData.channelId ?? "secure-input",
-              hookType: "secure-input",
+          } else if (jsonCredentials !== null) {
+            // Valid JSON but no credentials detected
+            sendJson(res, 400, {
+              success: false,
+              error:
+                "No credentials found in the JSON. Ensure field names contain key/token/secret/password.",
             });
-            stored.push({ provider, varName });
+            return;
+          } else {
+            // Not JSON — fall through to existing regex-based detection
+            const detected = detectApiKeys(value, {
+              enabled: true,
+              tier1: "auto-filter",
+              tier2: "auto-filter",
+              tier3: "auto-filter",
+              minKeyLength: 12,
+              entropyThreshold: 3.0,
+            });
+
+            if (detected.length > 0) {
+              for (const key of detected) {
+                const { varName } = await storeApiKey(
+                  key.value,
+                  serviceName || key.provider,
+                  undefined,
+                  {
+                    agentId: tokenData.agentId,
+                    sessionKey: tokenData.channelId ?? "secure-input",
+                    hookType: "secure-input",
+                  },
+                );
+                stored.push({ provider: serviceName || key.provider, varName });
+              }
+            } else {
+              // User explicitly submitted through /apikey - trust their input.
+              // Store the raw value as-is when auto-detection finds nothing.
+              const trimmed = value.trim();
+              if (trimmed.length < 8) {
+                sendJson(res, 400, {
+                  success: false,
+                  error: "Value too short to be an API key (minimum 8 characters)",
+                });
+                return;
+              }
+              const provider = serviceName || inferProvider(trimmed);
+              const { varName } = await storeApiKey(trimmed, provider, undefined, {
+                agentId: tokenData.agentId,
+                sessionKey: tokenData.channelId ?? "secure-input",
+                hookType: "secure-input",
+              });
+              stored.push({ provider, varName });
+            }
           }
 
           // Only consume the token after successful storage
@@ -568,7 +592,8 @@ export function createGatewayHttpServer(opts: {
           });
           return;
         } catch (error) {
-          log.error("secure-input submit error", error);
+          const safeMsg = error instanceof Error ? error.message : String(error);
+          log.error("secure-input submit error", { message: safeMsg });
           sendJson(res, 500, { success: false, error: "Internal Server Error" });
           return;
         }
