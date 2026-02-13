@@ -495,6 +495,121 @@
       .empty-state p {
         margin-bottom: 8px;
       }
+
+      /* Stored keys management */
+      .stored-keys-toggle {
+        width: 100%;
+        padding: 12px;
+        background: #f8f9ff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #555;
+        cursor: pointer;
+        transition: all 0.2s;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .stored-keys-toggle:hover {
+        background: #eef0ff;
+        border-color: #667eea;
+      }
+
+      .stored-keys-toggle .arrow {
+        transition: transform 0.2s;
+        font-size: 12px;
+      }
+
+      .stored-keys-toggle.open .arrow {
+        transform: rotate(90deg);
+      }
+
+      .stored-keys-panel {
+        display: none;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+        background: #fafafa;
+      }
+
+      .stored-keys-panel.open {
+        display: block;
+      }
+
+      .stored-key-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .stored-key-info {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .stored-key-var {
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        font-weight: 600;
+        color: #333;
+        word-break: break-all;
+      }
+
+      .stored-key-meta {
+        font-size: 12px;
+        color: #888;
+        margin-top: 4px;
+      }
+
+      .stored-key-value {
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+        color: #999;
+        margin-top: 2px;
+      }
+
+      .stored-key-delete {
+        background: none;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 6px 12px;
+        font-size: 12px;
+        color: #999;
+        cursor: pointer;
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+
+      .stored-key-delete:hover {
+        background: #ffebee;
+        border-color: #f44336;
+        color: #f44336;
+      }
+
+      .stored-keys-empty {
+        text-align: center;
+        padding: 20px;
+        color: #aaa;
+        font-size: 14px;
+      }
+
+      .stored-keys-loading {
+        text-align: center;
+        padding: 20px;
+        color: #888;
+        font-size: 14px;
+      }
     </style>
   </head>
   <body>
@@ -512,6 +627,15 @@
           <li>⏰ Time remaining: <strong id="expiry">loading...</strong></li>
           <li>📝 Paste text, upload .txt/.env files, or image screenshots</li>
         </ul>
+      </div>
+
+      <!-- Stored Keys Management (visible in phase1 and after storage) -->
+      <button class="stored-keys-toggle" id="storedKeysToggle" type="button">
+        <span>Manage Stored Keys</span>
+        <span class="arrow">&#9654;</span>
+      </button>
+      <div class="stored-keys-panel" id="storedKeysPanel">
+        <div id="storedKeysList"></div>
       </div>
 
       <!-- Phase 1: Input -->
@@ -647,6 +771,9 @@ or paste entire config file"
       const successMessage = document.getElementById("successMessage");
       const errorMessage = document.getElementById("errorMessage");
       const expiryEl = document.getElementById("expiry");
+      const storedKeysToggle = document.getElementById("storedKeysToggle");
+      const storedKeysPanel = document.getElementById("storedKeysPanel");
+      const storedKeysList = document.getElementById("storedKeysList");
 
       // State
       const urlParams = new URLSearchParams(window.location.search);
@@ -659,6 +786,107 @@ or paste entire config file"
       if (!token) {
         showError("Invalid or missing token. Please request a new secure input link.");
         extractBtn.disabled = true;
+        storedKeysToggle.style.display = "none";
+      }
+
+      // Stored keys management
+      storedKeysToggle.addEventListener("click", () => {
+        const isOpen = storedKeysPanel.classList.contains("open");
+        if (isOpen) {
+          storedKeysPanel.classList.remove("open");
+          storedKeysToggle.classList.remove("open");
+        } else {
+          storedKeysPanel.classList.add("open");
+          storedKeysToggle.classList.add("open");
+          loadStoredKeys();
+        }
+      });
+
+      async function loadStoredKeys() {
+        storedKeysList.innerHTML = '<div class="stored-keys-loading">Loading stored keys...</div>';
+        try {
+          const res = await fetch("/api/secure-input/keys?token=" + encodeURIComponent(token));
+          const data = await res.json();
+          if (!data.success) {
+            storedKeysList.innerHTML = '<div class="stored-keys-empty">Failed to load keys.</div>';
+            return;
+          }
+          renderStoredKeys(data.data.keys);
+        } catch {
+          storedKeysList.innerHTML = '<div class="stored-keys-empty">Failed to load keys.</div>';
+        }
+      }
+
+      function renderStoredKeys(keys) {
+        if (!keys || keys.length === 0) {
+          storedKeysList.innerHTML =
+            '<div class="stored-keys-empty">No API keys stored for this agent.</div>';
+          return;
+        }
+        storedKeysList.innerHTML = "";
+        for (const key of keys) {
+          const card = document.createElement("div");
+          card.className = "stored-key-card";
+
+          const storedDate = key.storedAt
+            ? new Date(key.storedAt).toLocaleDateString(undefined, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "Unknown";
+
+          card.innerHTML =
+            '<div class="stored-key-info">' +
+            '<div class="stored-key-var">' +
+            escapeHtml(key.varName) +
+            "</div>" +
+            '<div class="stored-key-meta">' +
+            (key.provider ? escapeHtml(key.provider) + " &middot; " : "") +
+            escapeHtml(storedDate) +
+            "</div>" +
+            '<div class="stored-key-value">' +
+            escapeHtml(key.redactedValue) +
+            "</div>" +
+            "</div>" +
+            '<button class="stored-key-delete" data-var="' +
+            escapeAttr(key.varName) +
+            '">Delete</button>';
+
+          card.querySelector(".stored-key-delete").addEventListener("click", async (e) => {
+            const varName = e.target.dataset.var;
+            if (!confirm("Delete " + varName + "? This cannot be undone.")) {
+              return;
+            }
+            e.target.disabled = true;
+            e.target.textContent = "...";
+            try {
+              const delRes = await fetch(
+                "/api/secure-input/keys?token=" +
+                  encodeURIComponent(token) +
+                  "&varName=" +
+                  encodeURIComponent(varName),
+                { method: "DELETE" },
+              );
+              const delData = await delRes.json();
+              if (delData.success) {
+                loadStoredKeys();
+              } else {
+                e.target.disabled = false;
+                e.target.textContent = "Delete";
+                showError("Failed to delete: " + (delData.error || "unknown error"));
+              }
+            } catch {
+              e.target.disabled = false;
+              e.target.textContent = "Delete";
+              showError("Failed to delete key.");
+            }
+          });
+
+          storedKeysList.appendChild(card);
+        }
       }
 
       // Countdown timer
@@ -1051,6 +1279,11 @@ or paste entire config file"
 
           // Hide the form elements
           phase2.style.display = "none";
+
+          // Auto-expand stored keys section to show the newly stored keys
+          storedKeysPanel.classList.add("open");
+          storedKeysToggle.classList.add("open");
+          loadStoredKeys();
         } catch (err) {
           showError(err.message);
           storeBtn.disabled = false;

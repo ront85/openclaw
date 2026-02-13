@@ -446,6 +446,60 @@ export function createGatewayHttpServer(opts: {
         return;
       }
 
+      // Secure input key management (list / delete stored keys)
+      if (url.pathname === "/api/secure-input/keys") {
+        const tokenParam = url.searchParams.get("token");
+        if (!tokenParam) {
+          sendJson(res, 400, { success: false, error: "token required" });
+          return;
+        }
+
+        const { validateSecureInputToken } = await import("./secure-input-tokens.js");
+        const tokenData = validateSecureInputToken(tokenParam);
+        if (!tokenData) {
+          sendJson(res, 400, {
+            success: false,
+            error: "Invalid, expired, or already used token",
+          });
+          return;
+        }
+
+        const { resolveAgentEnvPath, listStoredKeysWithRedacted, deleteStoredKey } =
+          await import("../infra/guardian/env-manager.js");
+        const agentEnvPath = resolveAgentEnvPath(tokenData.agentId);
+
+        if (req.method === "GET") {
+          try {
+            const keys = await listStoredKeysWithRedacted(agentEnvPath);
+            sendJson(res, 200, { success: true, data: { keys } });
+          } catch {
+            sendJson(res, 200, { success: true, data: { keys: [] } });
+          }
+          return;
+        }
+
+        if (req.method === "DELETE") {
+          const varName = url.searchParams.get("varName");
+          if (!varName) {
+            sendJson(res, 400, { success: false, error: "varName required" });
+            return;
+          }
+          const result = await deleteStoredKey(varName, agentEnvPath);
+          if (!result.deleted) {
+            sendJson(res, 404, { success: false, error: result.reason ?? "not found" });
+            return;
+          }
+          sendJson(res, 200, { success: true });
+          return;
+        }
+
+        res.statusCode = 405;
+        res.setHeader("Allow", "GET, DELETE");
+        res.setHeader("Content-Type", "application/json; charset=utf-8");
+        res.end(JSON.stringify({ success: false, error: "Method Not Allowed" }));
+        return;
+      }
+
       // Secure input preview — extract credentials without consuming the token
       if (url.pathname === "/api/secure-input/preview") {
         if (req.method !== "POST") {
@@ -649,7 +703,8 @@ export function createGatewayHttpServer(opts: {
           const { validateSecureInputToken, consumeSecureInputToken } =
             await import("./secure-input-tokens.js");
           const { detectApiKeys } = await import("../infra/guardian/api-key-detector.js");
-          const { storeApiKey } = await import("../infra/guardian/env-manager.js");
+          const { storeApiKey, resolveAgentEnvPath } =
+            await import("../infra/guardian/env-manager.js");
 
           // Validate token
           const tokenData = validateSecureInputToken(token);
@@ -660,6 +715,9 @@ export function createGatewayHttpServer(opts: {
             });
             return;
           }
+
+          // Store keys in per-agent .env (not global)
+          const agentEnvPath = resolveAgentEnvPath(tokenData.agentId);
 
           // Try JSON-aware extraction first (handles config files with multiple credentials)
           const { extractJsonCredentials, replaceJsonCredentials } =
@@ -680,7 +738,7 @@ export function createGatewayHttpServer(opts: {
               const { varName } = await storeApiKey(
                 cred.value,
                 cred.provider,
-                undefined,
+                agentEnvPath,
                 {
                   agentId: tokenData.agentId,
                   sessionKey: tokenData.channelId ?? "secure-input",
@@ -727,7 +785,7 @@ export function createGatewayHttpServer(opts: {
                 const { varName } = await storeApiKey(
                   key.value,
                   serviceName || key.provider,
-                  undefined,
+                  agentEnvPath,
                   {
                     agentId: tokenData.agentId,
                     sessionKey: tokenData.channelId ?? "secure-input",
@@ -754,7 +812,7 @@ export function createGatewayHttpServer(opts: {
                 const { varName } = await storeApiKey(
                   trimmed,
                   provider,
-                  undefined,
+                  agentEnvPath,
                   {
                     agentId: tokenData.agentId,
                     sessionKey: tokenData.channelId ?? "secure-input",

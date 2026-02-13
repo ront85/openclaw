@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile, rename } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { acquireSessionWriteLock } from "../../agents/session-write-lock.js";
+import { resolveStateDir } from "../../config/paths.js";
 
 export type StoredKeyMetadata = {
   varName: string;
@@ -272,4 +273,97 @@ export async function getKeyValue(varName: string, envPath?: string): Promise<st
  */
 export async function initializeCache(envPath?: string): Promise<void> {
   await listStoredKeys(envPath);
+}
+
+/**
+ * Resolve the per-agent .env file path
+ */
+export function resolveAgentEnvPath(agentId: string): string {
+  return join(resolveStateDir(), "agents", agentId, "agent", ".env");
+}
+
+/**
+ * List all stored API keys with redacted values (never exposes raw values)
+ */
+export async function listStoredKeysWithRedacted(
+  envPath?: string,
+): Promise<Array<StoredKeyMetadata & { redactedValue: string }>> {
+  // Lazy-import to avoid circular dependency at module load
+  const { redactValue } = await import("./json-credential-extractor.js");
+  const vars = await readEnvFile(envPath);
+  const results: Array<StoredKeyMetadata & { redactedValue: string }> = [];
+
+  for (const [varName, value] of Object.entries(vars)) {
+    if (!varName.startsWith("OPENCLAW_API_KEY_")) {
+      continue;
+    }
+
+    const match = varName.match(/^OPENCLAW_API_KEY_(.+)_(\d{10,})$/);
+    results.push({
+      varName,
+      provider: match?.[1] ?? null,
+      storedAt: match?.[2] ? Number.parseInt(match[2], 10) : 0,
+      hash: hashKey(value),
+      redactedValue: redactValue(value),
+    });
+  }
+
+  return results;
+}
+
+/**
+ * Delete a stored API key from .env file
+ */
+export async function deleteStoredKey(
+  varName: string,
+  envPath?: string,
+): Promise<{ deleted: boolean; reason?: string }> {
+  if (!varName.startsWith("OPENCLAW_API_KEY_")) {
+    return { deleted: false, reason: "invalid variable name" };
+  }
+
+  const path = envPath ?? getDefaultEnvPath();
+
+  if (!existsSync(path)) {
+    return { deleted: false, reason: "not found" };
+  }
+
+  const lock = await acquireSessionWriteLock({ sessionFile: path });
+
+  try {
+    const content = await readFile(path, "utf-8");
+    const lines = content.split("\n");
+    let found = false;
+    const newLines: string[] = [];
+
+    for (const line of lines) {
+      const match = line.match(/^([A-Z_][A-Z0-9_]*)\s*=\s*/);
+      if (match && match[1] === varName) {
+        found = true;
+        // Remove from keyCache by finding the hash
+        const valueMatch = line.match(/^[A-Z_][A-Z0-9_]*\s*=\s*(.*)$/);
+        if (valueMatch) {
+          const hash = hashKey(valueMatch[1]);
+          keyCache.delete(hash);
+        }
+        continue; // skip this line
+      }
+      newLines.push(line);
+    }
+
+    if (!found) {
+      return { deleted: false, reason: "not found" };
+    }
+
+    const tempPath = `${path}.tmp`;
+    await writeFile(tempPath, newLines.join("\n"), "utf-8");
+    await rename(tempPath, path);
+
+    // Remove from process.env
+    delete process.env[varName];
+
+    return { deleted: true };
+  } finally {
+    await lock.release();
+  }
 }
