@@ -80,6 +80,25 @@ export function peekSecureInputToken(
 }
 
 /**
+ * Look up token data without enforcing used/expired checks.
+ * Returns agentId even for consumed tokens (for key management endpoints).
+ * Returns null only if the token doesn't exist at all.
+ */
+export function lookupSecureInputToken(
+  token: string,
+): { agentId: string; expired: boolean; used: boolean } | null {
+  const data = tokens.get(token);
+  if (!data) {
+    return null;
+  }
+  return {
+    agentId: data.agentId,
+    expired: data.expiresAt < Date.now(),
+    used: data.used,
+  };
+}
+
+/**
  * Validate a secure input token without consuming it.
  * Returns token data if valid, null if invalid/expired/used.
  */

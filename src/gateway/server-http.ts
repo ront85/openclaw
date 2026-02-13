@@ -454,13 +454,14 @@ export function createGatewayHttpServer(opts: {
           return;
         }
 
-        const { validateSecureInputToken } = await import("./secure-input-tokens.js");
-        const tokenData = validateSecureInputToken(tokenParam);
+        const { lookupSecureInputToken } = await import("./secure-input-tokens.js");
+        const tokenData = lookupSecureInputToken(tokenParam);
         if (!tokenData) {
-          sendJson(res, 400, {
-            success: false,
-            error: "Invalid, expired, or already used token",
-          });
+          sendJson(res, 400, { success: false, error: "token not found" });
+          return;
+        }
+        if (tokenData.expired) {
+          sendJson(res, 400, { success: false, error: "token expired" });
           return;
         }
 
