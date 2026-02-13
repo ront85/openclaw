@@ -209,7 +209,8 @@ describe("json-credential-extractor", () => {
       const config = {
         google_ads: {
           developer_token: "AaBbCcDdEeFf1234567890AbCdEfGh",
-          oauth_client_id: "123456789-abcdefghijklmnop.apps.googleusercontent.com",
+          oauth_client_id:
+            "991361483151-499i2smg6qg4rulvaasakr4bqqknr01f.apps.googleusercontent.com",
           oauth_client_secret: "GOCspx-AbCdEfGhIjKlMnOpQrStUvWxYz",
           refresh_token: "1//0abc-defgh_ijklm-nopqrs-tuvwxyz1234",
           login_customer_id: "1234567890",
@@ -220,13 +221,13 @@ describe("json-credential-extractor", () => {
       };
       const result = extractJsonCredentials(JSON.stringify(config));
       expect(result).not.toBeNull();
-      // developer_token, oauth_client_secret, refresh_token, access_token
-      // oauth_client_id is skipped (id is metadata suffix)
-      // login_customer_id is skipped (not credential suffix)
-      expect(result!.length).toBeGreaterThanOrEqual(4);
+      // developer_token, oauth_client_id, oauth_client_secret, refresh_token, access_token
+      // login_customer_id is skipped (not credential suffix, no compound match)
+      expect(result!.length).toBeGreaterThanOrEqual(5);
 
       const fieldNames = result!.map((c) => c.fieldName);
       expect(fieldNames).toContain("developer_token");
+      expect(fieldNames).toContain("oauth_client_id");
       expect(fieldNames).toContain("oauth_client_secret");
       expect(fieldNames).toContain("refresh_token");
       expect(fieldNames).toContain("access_token");
@@ -334,6 +335,125 @@ describe("json-credential-extractor", () => {
       const result = extractJsonCredentials(json);
       expect(result).not.toBeNull();
       expect(result).toHaveLength(1);
+    });
+
+    it("extracts oauth_client_id via compound matching", () => {
+      const json = JSON.stringify({
+        oauth_client_id: "991361483151-499i2smg6qg4rulvaasakr4bqqknr01f.apps.googleusercontent.com",
+      });
+      const result = extractJsonCredentials(json);
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(1);
+      expect(result![0].fieldName).toBe("oauth_client_id");
+    });
+
+    it("extracts app_id via compound matching", () => {
+      const json = JSON.stringify({
+        app_id: "834099569636167_AbCdEf",
+      });
+      const result = extractJsonCredentials(json);
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(1);
+      expect(result![0].fieldName).toBe("app_id");
+    });
+
+    it("skips re_auth_instructions (natural language value)", () => {
+      const json = JSON.stringify({
+        re_auth_instructions:
+          "See docs/THEISS_MARKETING_DATA_ACCESS.md → GBP section → Re-auth procedure",
+      });
+      const result = extractJsonCredentials(json);
+      expect(result).not.toBeNull();
+      expect(result).toEqual([]);
+    });
+
+    it("skips access field with descriptive text value", () => {
+      const json = JSON.stringify({
+        access: "Service account with Viewer role",
+        access_level: "Explorer Access (read-only)",
+      });
+      const result = extractJsonCredentials(json);
+      expect(result).not.toBeNull();
+      expect(result).toEqual([]);
+    });
+
+    it("extracts conversion_label field", () => {
+      const json = JSON.stringify({
+        google_ads: {
+          conversion_label: "4UN1CMTL4_IbEJX-4sJC",
+        },
+      });
+      const result = extractJsonCredentials(json);
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(1);
+      expect(result![0].fieldName).toBe("conversion_label");
+    });
+
+    it("handles theiss.design full config correctly", () => {
+      const config = {
+        google_cloud: {
+          project_id: "theiss-website",
+          service_account_email: "theiss-marketing-api@theiss-website.iam.gserviceaccount.com",
+          service_account_client_id: "106568011681405756042",
+          service_account_key_id: "dummy_key_id_abc123xyz789",
+          service_account_private_key:
+            "-----BEGIN PRIVATE KEY-----\nDUMMY_KEY\n-----END PRIVATE KEY-----\n",
+        },
+        google_ads: {
+          customer_id: "7763901944",
+          developer_token: "DummyDeveloperTokenXYZ123",
+          access_level: "Explorer Access (read-only)",
+          tag_id: "AW-17856773909",
+          conversion_label: "4UN1CMTL4_IbEJX-4sJC",
+          access: "Developer token + service account via MCC",
+        },
+        google_business_profile: {
+          status: "OAuth2 configured — waiting for API quota approval from Google",
+          oauth_client_id:
+            "991361483151-499i2smg6qg4rulvaasakr4bqqknr01f.apps.googleusercontent.com",
+          oauth_client_secret: "GOCSPX-DummyClientSecretXYZ",
+          refresh_token: "1//DummyRefreshTokenXYZ123ABC",
+          authorized_account: "ron.tiso85@gmail.com",
+          re_auth_instructions:
+            "See docs/THEISS_MARKETING_DATA_ACCESS.md → GBP section → Re-auth procedure",
+        },
+        meta: {
+          business_id: "168142149212751",
+          app_id: "834099569636167",
+          access_token: "EAAL2mZCCOM0cBQvOLluDummyAccessTokenXYZ123",
+          facebook_page_id: "110637651785268",
+        },
+        odoo: {
+          url: "https://cloud.lynxgroup.ch/jsonrpc",
+          user: "ron.tiso@lynxgroup.ch",
+          api_key: "DummyOdooApiKeyXYZ123",
+        },
+      };
+      const result = extractJsonCredentials(JSON.stringify(config));
+      expect(result).not.toBeNull();
+
+      const fieldNames = result!.map((c) => c.fieldName);
+
+      // Should detect these credentials
+      expect(fieldNames).toContain("service_account_private_key");
+      expect(fieldNames).toContain("developer_token");
+      expect(fieldNames).toContain("conversion_label");
+      expect(fieldNames).toContain("oauth_client_id");
+      expect(fieldNames).toContain("oauth_client_secret");
+      expect(fieldNames).toContain("refresh_token");
+      expect(fieldNames).toContain("access_token");
+      expect(fieldNames).toContain("api_key");
+
+      // Should NOT detect these
+      expect(fieldNames).not.toContain("re_auth_instructions");
+      expect(fieldNames).not.toContain("access_level");
+      expect(fieldNames).not.toContain("access");
+      expect(fieldNames).not.toContain("status");
+      expect(fieldNames).not.toContain("authorized_account");
+      expect(fieldNames).not.toContain("project_id");
+      expect(fieldNames).not.toContain("customer_id");
+      expect(fieldNames).not.toContain("business_id");
+      expect(fieldNames).not.toContain("service_account_key_id");
     });
   });
 });

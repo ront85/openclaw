@@ -11,7 +11,26 @@ export type ExtractedCredential = {
  * Credential-like field name suffixes.
  * If the last meaningful token of a field name is one of these, it's likely a credential.
  */
-const CREDENTIAL_SUFFIXES = new Set(["token", "key", "secret", "password", "credential", "auth"]);
+const CREDENTIAL_SUFFIXES = new Set([
+  "token",
+  "key",
+  "secret",
+  "password",
+  "credential",
+  "auth",
+  "label",
+]);
+
+/**
+ * Multi-token credential compounds that should always match.
+ * Checked as consecutive token pairs in the field name.
+ */
+const CREDENTIAL_COMPOUNDS = [
+  ["private", "key"],
+  ["client", "id"],
+  ["app", "id"],
+  ["api", "id"],
+];
 
 /**
  * When the credential suffix is NOT the last token, skip if the last token is metadata.
@@ -32,6 +51,15 @@ const METADATA_LAST_TOKENS = new Set([
   "path",
   "algorithm",
   "encoding",
+  "instructions",
+  "description",
+  "note",
+  "notes",
+  "status",
+  "level",
+  "access",
+  "email",
+  "account",
 ]);
 
 /**
@@ -44,6 +72,20 @@ function isCredentialField(fieldName: string): boolean {
     .filter(Boolean);
   if (tokens.length === 0) {
     return false;
+  }
+
+  // Check credential compounds first (e.g. "private_key", "client_id", "app_id")
+  for (const compound of CREDENTIAL_COMPOUNDS) {
+    let matched = true;
+    for (const part of compound) {
+      if (!tokens.includes(part)) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) {
+      return true;
+    }
   }
 
   const lastToken = tokens[tokens.length - 1];
@@ -62,11 +104,6 @@ function isCredentialField(fieldName: string): boolean {
   // Has a credential suffix but it's not last — skip if last token is metadata
   if (METADATA_LAST_TOKENS.has(lastToken)) {
     return false;
-  }
-
-  // "private_key" is a special compound that should match
-  if (tokens.includes("private") && tokens.includes("key")) {
-    return true;
   }
 
   return true;
@@ -106,9 +143,15 @@ function isViableValue(value: string): boolean {
     return false;
   }
 
-  // PEM keys — skip entropy check
+  // PEM keys — skip entropy and other checks
   if (value.startsWith("-----BEGIN")) {
     return true;
+  }
+
+  // Skip natural language text (3+ space-separated words, excluding newline-only whitespace)
+  const spaceWords = value.split(/[ \t]+/).filter(Boolean);
+  if (spaceWords.length >= 3 && / /.test(value)) {
+    return false;
   }
 
   // Entropy check
