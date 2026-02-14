@@ -62,9 +62,6 @@ export function createExecApprovalHandlers(
         sessionKey: p.sessionKey ?? null,
       };
       const record = manager.create(request, timeoutMs, explicitId);
-      console.error(
-        `[exec-approval] request created: id=${record.id} command=${p.command?.substring(0, 80)}`,
-      );
       const decisionPromise = manager.waitForDecision(record, timeoutMs);
       context.broadcast(
         "exec.approval.requested",

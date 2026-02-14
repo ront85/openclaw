@@ -255,18 +255,16 @@ export class DiscordExecApprovalHandler {
 
     const config = this.opts.config;
     if (!config.enabled) {
-      logError("discord exec approvals: disabled (config.enabled=false)");
+      logDebug("discord exec approvals: disabled");
       return;
     }
 
     if (!config.approvers || config.approvers.length === 0) {
-      logError("discord exec approvals: no approvers configured");
+      logDebug("discord exec approvals: no approvers configured");
       return;
     }
 
-    logError(
-      `discord exec approvals: starting handler (approvers=${JSON.stringify(config.approvers)})`,
-    );
+    logDebug(`discord exec approvals: starting handler (approvers=${config.approvers.length})`);
 
     this.gatewayClient = new GatewayClient({
       url: this.opts.gatewayUrl ?? "ws://127.0.0.1:18789",
@@ -276,13 +274,13 @@ export class DiscordExecApprovalHandler {
       scopes: ["operator.approvals"],
       onEvent: (evt) => this.handleGatewayEvent(evt),
       onHelloOk: () => {
-        logError("discord exec approvals: connected to gateway");
+        logDebug("discord exec approvals: connected to gateway");
       },
       onConnectError: (err) => {
         logError(`discord exec approvals: connect error: ${err.message}`);
       },
       onClose: (code, reason) => {
-        logError(`discord exec approvals: gateway closed: ${code} ${reason}`);
+        logDebug(`discord exec approvals: gateway closed: ${code} ${reason}`);
       },
     });
 
@@ -309,7 +307,7 @@ export class DiscordExecApprovalHandler {
   }
 
   private handleGatewayEvent(evt: EventFrame): void {
-    logError(`discord exec approvals: gateway event: ${evt.event}`);
+    logDebug(`discord exec approvals: gateway event: ${evt.event}`);
     if (evt.event === "exec.approval.requested") {
       const request = evt.payload as ExecApprovalRequest;
       void this.handleApprovalRequested(request);
