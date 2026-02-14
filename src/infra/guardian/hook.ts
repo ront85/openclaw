@@ -118,7 +118,7 @@ export function createGuardianHook(params: GuardianHookParams): {
             toolParams,
             riskLevel: "critical",
             trustLevel: resolveTrustLevel({
-              senderIsOwner: params.senderIsOwner,
+              senderIsOwner: ctx.senderIsOwner ?? params.senderIsOwner,
               isSubagent: params.isSubagent,
               isAllowed: params.isAllowed,
             }),
@@ -136,7 +136,7 @@ export function createGuardianHook(params: GuardianHookParams): {
 
     // Tier 1: Rules
     const trustLevel = resolveTrustLevel({
-      senderIsOwner: params.senderIsOwner,
+      senderIsOwner: ctx.senderIsOwner ?? params.senderIsOwner,
       isSubagent: params.isSubagent,
       isAllowed: params.isAllowed,
     });

@@ -390,6 +390,7 @@ export type PluginHookToolContext = {
   agentId?: string;
   sessionKey?: string;
   toolName: string;
+  senderIsOwner?: boolean;
 };
 
 // before_tool_call hook

@@ -280,6 +280,7 @@ export function createOpenClawCodingTools(options?: {
     host: options?.exec?.host ?? execConfig.host,
     security: options?.exec?.security ?? execConfig.security,
     ask: options?.exec?.ask ?? execConfig.ask,
+    guardianEnabled: !!options?.config?.approvals?.guardian?.enabled,
     node: options?.exec?.node ?? execConfig.node,
     pathPrepend: options?.exec?.pathPrepend ?? execConfig.pathPrepend,
     safeBins: options?.exec?.safeBins ?? execConfig.safeBins,
@@ -443,6 +444,7 @@ export function createOpenClawCodingTools(options?: {
     wrapToolWithBeforeToolCallHook(tool, {
       agentId,
       sessionKey: options?.sessionKey,
+      senderIsOwner: options?.senderIsOwner,
     }),
   );
   const withAbort = options?.abortSignal

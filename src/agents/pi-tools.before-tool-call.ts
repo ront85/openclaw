@@ -7,6 +7,7 @@ import { normalizeToolName } from "./tool-policy.js";
 type HookContext = {
   agentId?: string;
   sessionKey?: string;
+  senderIsOwner?: boolean;
 };
 
 type HookOutcome = { blocked: true; reason: string } | { blocked: false; params: unknown };
@@ -37,6 +38,7 @@ export async function runBeforeToolCallHook(args: {
         toolName,
         agentId: args.ctx?.agentId,
         sessionKey: args.ctx?.sessionKey,
+        senderIsOwner: args.ctx?.senderIsOwner,
       },
     );
 

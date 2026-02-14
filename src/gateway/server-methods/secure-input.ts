@@ -1,6 +1,6 @@
 import type { GatewayRequestHandler } from "./types.js";
 import { detectApiKeys } from "../../infra/guardian/api-key-detector.js";
-import { storeApiKey } from "../../infra/guardian/env-manager.js";
+import { resolveAgentEnvPath, storeApiKey } from "../../infra/guardian/env-manager.js";
 import { extractJsonCredentials } from "../../infra/guardian/json-credential-extractor.js";
 import { createSecureInputToken, validateSecureInputToken } from "../secure-input-tokens.js";
 
@@ -72,11 +72,16 @@ export const secureInputSubmit: GatewayRequestHandler = async ({ params, respond
   if (jsonCredentials !== null && jsonCredentials.length > 0) {
     // Valid JSON with credentials found
     for (const cred of jsonCredentials) {
-      const { varName } = await storeApiKey(cred.value, cred.provider, undefined, {
-        agentId: tokenData.agentId,
-        sessionKey: tokenData.channelId ?? "secure-input",
-        hookType: "secure-input",
-      });
+      const { varName } = await storeApiKey(
+        cred.value,
+        cred.provider,
+        resolveAgentEnvPath(tokenData.agentId),
+        {
+          agentId: tokenData.agentId,
+          sessionKey: tokenData.channelId ?? "secure-input",
+          hookType: "secure-input",
+        },
+      );
       stored.push({ provider: cred.provider, varName });
     }
   } else if (jsonCredentials !== null) {
@@ -107,11 +112,16 @@ export const secureInputSubmit: GatewayRequestHandler = async ({ params, respond
     }
 
     for (const key of detected) {
-      const { varName } = await storeApiKey(key.value, serviceName || key.provider, undefined, {
-        agentId: tokenData.agentId,
-        sessionKey: tokenData.channelId ?? "secure-input",
-        hookType: "secure-input",
-      });
+      const { varName } = await storeApiKey(
+        key.value,
+        serviceName || key.provider,
+        resolveAgentEnvPath(tokenData.agentId),
+        {
+          agentId: tokenData.agentId,
+          sessionKey: tokenData.channelId ?? "secure-input",
+          hookType: "secure-input",
+        },
+      );
       stored.push({ provider: serviceName || key.provider, varName });
     }
   }
