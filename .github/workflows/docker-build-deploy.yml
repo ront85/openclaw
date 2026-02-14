@@ -63,4 +63,4 @@ jobs:
           ssh-keyscan -H 5.161.46.0 >> ~/.ssh/known_hosts
 
           # Deploy: pull latest image and restart container
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no deployer@5.161.46.0 "sudo docker pull ghcr.io/ront85/openclaw:latest && sudo docker restart openclaw-gateway && echo '✅ Deployment complete! Waiting for startup...' && sleep 15 && sudo docker logs openclaw-gateway --tail 20"
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=no deployer@5.161.46.0 "sudo docker pull ghcr.io/ront85/openclaw:latest && CONTAINER=\$(sudo docker ps --format '{{.Names}}' | grep openclaw-gateway | head -1) && sudo docker restart \$CONTAINER && echo '✅ Deployment complete! Waiting for startup...' && sleep 15 && sudo docker logs \$CONTAINER --tail 20"
