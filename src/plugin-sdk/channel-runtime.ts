@@ -3,6 +3,7 @@
 
 export * from "../channels/chat-type.js";
 export * from "../channels/reply-prefix.js";
+export * from "../channels/progress-status-text.js";
 export * from "../channels/typing.js";
 export type * from "../channels/plugins/types.js";
 export * from "../channels/plugins/normalize/signal.js";

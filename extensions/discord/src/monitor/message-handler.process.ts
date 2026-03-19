@@ -9,6 +9,7 @@ import {
   shouldAckReaction as shouldAckReactionGate,
   type StatusReactionAdapter,
 } from "openclaw/plugin-sdk/channel-feedback";
+import { createProgressTracker } from "openclaw/plugin-sdk/channel-runtime";
 import {
   formatInboundEnvelope,
   resolveEnvelopeFormatOptions,
@@ -480,18 +481,31 @@ export async function processDiscordMessage(
   const deliverChannelId = deliverTarget.startsWith("channel:")
     ? deliverTarget.slice("channel:".length)
     : messageChannelId;
+  const isProgressMode = discordStreamMode === "progress";
   const draftStream = canStreamDraft
     ? createDiscordDraftStream({
         rest: client.rest,
         channelId: deliverChannelId,
         maxChars: draftMaxChars,
         replyToMessageId: draftReplyToMessageId,
-        minInitialChars: 30,
+        // Progress mode status text is short; skip the initial char threshold.
+        minInitialChars: isProgressMode ? 1 : 30,
         throttleMs: 1200,
         log: logVerbose,
         warn: logVerbose,
       })
     : undefined;
+  const progressTracker = isProgressMode && draftStream ? createProgressTracker() : undefined;
+  let inProgressPhase = isProgressMode;
+  // Refresh elapsed time display every 3 seconds while in progress phase.
+  const progressInterval =
+    isProgressMode && draftStream
+      ? setInterval(() => {
+          if (inProgressPhase && progressTracker) {
+            draftStream.update(progressTracker.format());
+          }
+        }, 3000)
+      : undefined;
   const draftChunking =
     draftStream && discordStreamMode === "block"
       ? resolveDiscordDraftStreamingChunking(cfg, accountId)
@@ -548,7 +562,7 @@ export async function processDiscordMessage(
       return;
     }
     hasStreamedMessage = true;
-    if (discordStreamMode === "partial") {
+    if (discordStreamMode === "partial" || discordStreamMode === "progress") {
       // Keep the longer preview to avoid visible punctuation flicker.
       if (
         lastPartialText &&
@@ -633,63 +647,39 @@ export async function processDiscordMessage(
           return;
         }
         if (draftStream && isFinal) {
-          await flushDraft();
-          const reply = resolveSendableOutboundReplyParts(payload);
-          const hasMedia = reply.hasMedia;
-          const finalText = payload.text;
-          const previewFinalText = resolvePreviewFinalText(finalText);
-          const previewMessageId = draftStream.messageId();
-
-          // Try to finalize via preview edit (text-only, fits in 2000 chars, not an error)
-          const canFinalizeViaPreviewEdit =
-            !finalizedViaPreviewMessage &&
-            !hasMedia &&
-            typeof previewFinalText === "string" &&
-            typeof previewMessageId === "string" &&
-            !payload.isError;
-
-          if (canFinalizeViaPreviewEdit) {
-            await draftStream.stop();
-            if (isProcessAborted(abortSignal)) {
-              return;
-            }
-            try {
-              notifyFinalReplyStart();
-              await editMessageDiscord(
-                deliverChannelId,
-                previewMessageId,
-                { content: previewFinalText },
-                { rest: client.rest },
-              );
-              finalizedViaPreviewMessage = true;
-              replyReference.markSent();
-              observer?.onFinalReplyDelivered?.();
-              return;
-            } catch (err) {
-              logVerbose(
-                `discord: preview final edit failed; falling back to standard send (${String(err)})`,
-              );
-            }
+          // Progress mode: always delete the progress/draft message and deliver normally.
+          if (isProgressMode) {
+            if (progressInterval) clearInterval(progressInterval);
+            inProgressPhase = false;
+            await draftStream.clear();
+            // Fall through to standard deliverDiscordReply below.
           }
+          if (!isProgressMode) {
+            await flushDraft();
+            const reply = resolveSendableOutboundReplyParts(payload);
+            const hasMedia = reply.hasMedia;
+            const finalText = payload.text;
+            const previewFinalText = resolvePreviewFinalText(finalText);
+            const previewMessageId = draftStream.messageId();
 
-          // Check if stop() flushed a message we can edit
-          if (!finalizedViaPreviewMessage) {
-            await draftStream.stop();
-            if (isProcessAborted(abortSignal)) {
-              return;
-            }
-            const messageIdAfterStop = draftStream.messageId();
-            if (
-              typeof messageIdAfterStop === "string" &&
-              typeof previewFinalText === "string" &&
+            // Try to finalize via preview edit (text-only, fits in 2000 chars, not an error)
+            const canFinalizeViaPreviewEdit =
+              !finalizedViaPreviewMessage &&
               !hasMedia &&
-              !payload.isError
-            ) {
+              typeof previewFinalText === "string" &&
+              typeof previewMessageId === "string" &&
+              !payload.isError;
+
+            if (canFinalizeViaPreviewEdit) {
+              await draftStream.stop();
+              if (isProcessAborted(abortSignal)) {
+                return;
+              }
               try {
                 notifyFinalReplyStart();
                 await editMessageDiscord(
                   deliverChannelId,
-                  messageIdAfterStop,
+                  previewMessageId,
                   { content: previewFinalText },
                   { rest: client.rest },
                 );
@@ -699,16 +689,47 @@ export async function processDiscordMessage(
                 return;
               } catch (err) {
                 logVerbose(
-                  `discord: post-stop preview edit failed; falling back to standard send (${String(err)})`,
+                  `discord: preview final edit failed; falling back to standard send (${String(err)})`,
                 );
               }
             }
-          }
 
-          // Clear the preview and fall through to standard delivery
-          if (!finalizedViaPreviewMessage) {
-            await draftStream.clear();
-          }
+            // Check if stop() flushed a message we can edit
+            if (!finalizedViaPreviewMessage) {
+              await draftStream.stop();
+              if (isProcessAborted(abortSignal)) {
+                return;
+              }
+              const messageIdAfterStop = draftStream.messageId();
+              if (
+                typeof messageIdAfterStop === "string" &&
+                typeof previewFinalText === "string" &&
+                !hasMedia &&
+                !payload.isError
+              ) {
+                try {
+                  await editMessageDiscord(
+                    deliverChannelId,
+                    messageIdAfterStop,
+                    { content: previewFinalText },
+                    { rest: client.rest },
+                  );
+                  finalizedViaPreviewMessage = true;
+                  replyReference.markSent();
+                  return;
+                } catch (err) {
+                  logVerbose(
+                    `discord: post-stop preview edit failed; falling back to standard send (${String(err)})`,
+                  );
+                }
+              }
+            }
+
+            // Clear the preview and fall through to standard delivery
+            if (!finalizedViaPreviewMessage) {
+              await draftStream.clear();
+            }
+          } // end if (!isProgressMode)
         }
         if (isProcessAborted(abortSignal)) {
           return;
@@ -774,7 +795,17 @@ export async function processDiscordMessage(
           (typeof discordConfig?.blockStreaming === "boolean"
             ? !discordConfig.blockStreaming
             : undefined),
-        onPartialReply: draftStream ? (payload) => updateDraftFromPartial(payload.text) : undefined,
+        onPartialReply: draftStream
+          ? (payload) => {
+              if (inProgressPhase && isProgressMode) {
+                // Transition: status display -> text streaming
+                inProgressPhase = false;
+                if (progressInterval) clearInterval(progressInterval);
+                draftStream.forceNewMessage();
+              }
+              updateDraftFromPartial(payload.text);
+            }
+          : undefined,
         onAssistantMessageStart: draftStream
           ? () => {
               if (shouldSplitPreviewMessages && hasStreamedMessage) {
@@ -799,17 +830,29 @@ export async function processDiscordMessage(
           : undefined,
         onModelSelected,
         onReasoningStream: async () => {
+          if (progressTracker && inProgressPhase) {
+            progressTracker.setPhase("thinking");
+            draftStream?.update(progressTracker.format());
+          }
           await statusReactions.setThinking();
         },
         onToolStart: async (payload) => {
           if (isProcessAborted(abortSignal)) {
             return;
           }
+          if (progressTracker && inProgressPhase) {
+            progressTracker.setPhase("tool", payload.name);
+            draftStream?.update(progressTracker.format());
+          }
           await statusReactions.setTool(payload.name);
         },
         onCompactionStart: async () => {
           if (isProcessAborted(abortSignal)) {
             return;
+          }
+          if (progressTracker && inProgressPhase) {
+            progressTracker.setPhase("compacting");
+            draftStream?.update(progressTracker.format());
           }
           await statusReactions.setCompacting();
         },
@@ -834,6 +877,7 @@ export async function processDiscordMessage(
     dispatchError = true;
     throw err;
   } finally {
+    if (progressInterval) clearInterval(progressInterval);
     try {
       // Must stop() first to flush debounced content before clear() wipes state.
       await draftStream?.stop();

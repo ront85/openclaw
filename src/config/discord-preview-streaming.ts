@@ -1,5 +1,5 @@
 export type StreamingMode = "off" | "partial" | "block" | "progress";
-export type DiscordPreviewStreamMode = "off" | "partial" | "block";
+export type DiscordPreviewStreamMode = "off" | "partial" | "block" | "progress";
 export type TelegramPreviewStreamMode = "off" | "partial" | "block";
 export type SlackLegacyDraftStreamMode = "replace" | "status_final" | "append";
 
@@ -29,7 +29,7 @@ export function parseDiscordPreviewStreamMode(value: unknown): DiscordPreviewStr
   if (!parsed) {
     return null;
   }
-  return parsed === "progress" ? "partial" : parsed;
+  return parsed;
 }
 
 export function parseSlackLegacyDraftStreamMode(value: unknown): SlackLegacyDraftStreamMode | null {
@@ -78,7 +78,8 @@ export function resolveTelegramPreviewStreamMode(
 
   const legacy = parseDiscordPreviewStreamMode(params.streamMode);
   if (legacy) {
-    return legacy;
+    // Telegram doesn't support progress mode; map to partial.
+    return legacy === "progress" ? "partial" : legacy;
   }
   if (typeof params.streaming === "boolean") {
     return params.streaming ? "partial" : "off";
