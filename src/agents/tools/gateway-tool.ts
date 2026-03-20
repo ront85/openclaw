@@ -38,6 +38,7 @@ const GATEWAY_ACTIONS = [
   "config.apply",
   "config.patch",
   "update.run",
+  "secure-input.create",
 ] as const;
 
 // NOTE: Using a flattened object schema instead of Type.Union([Type.Object(...), ...])
@@ -61,6 +62,9 @@ const GatewayToolSchema = Type.Object({
   sessionKey: Type.Optional(Type.String()),
   note: Type.Optional(Type.String()),
   restartDelayMs: Type.Optional(Type.Number()),
+  // secure-input.create
+  agentId: Type.Optional(Type.String()),
+  channelId: Type.Optional(Type.String()),
 });
 // NOTE: We intentionally avoid top-level `allOf`/`anyOf`/`oneOf` conditionals here:
 // - OpenAI rejects tool schemas that include these keywords at the *top-level*.
@@ -76,7 +80,7 @@ export function createGatewayTool(opts?: {
     name: "gateway",
     ownerOnly: true,
     description:
-      "Restart, inspect a specific config schema path, apply config, or update the gateway in-place (SIGUSR1). Use config.schema.lookup with a targeted dot path before config edits. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing. Always pass a human-readable completion message via the `note` parameter so the system can deliver it to the user after restart.",
+      "Restart, inspect a specific config schema path, apply config, update the gateway in-place (SIGUSR1), or create a secure-input link for API key storage. Use config.schema.lookup with a targeted dot path before config edits. Use config.patch for safe partial config updates (merges with existing). Use config.apply only when replacing entire config. Both trigger restart after writing. Always pass a human-readable completion message via the `note` parameter so the system can deliver it to the user after restart. Use secure-input.create to generate a one-time HTTPS link for secure API key entry (never paste keys in chat).",
     parameters: GatewayToolSchema,
     execute: async (_toolCallId, args) => {
       const params = args as Record<string, unknown>;
@@ -220,6 +224,18 @@ export function createGatewayTool(opts?: {
           timeoutMs: updateTimeoutMs,
         });
         return jsonResult({ ok: true, result });
+      }
+
+      if (action === "secure-input.create") {
+        const { createSecureInputToken } = await import("../../gateway/secure-input-tokens.js");
+        const result = createSecureInputToken({
+          agentId: readStringParam(params, "agentId") ?? "",
+          channelId: readStringParam(params, "channelId") ?? undefined,
+          purpose: "apikey",
+        });
+        const mins = Math.floor((result.expiresAt - Date.now()) / 60_000);
+        const text = `Click here to securely enter your API key:\n${result.url}\n\nThis link expires in ${mins} minutes\nHTTPS encrypted, key never touches chat history`;
+        return jsonResult({ ok: true, text, details: result });
       }
 
       throw new Error(`Unknown action: ${action}`);
